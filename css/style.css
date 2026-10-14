@@ -1257,141 +1257,285 @@ main {
   color: var(--success);
 }
 
-/* COMPACT DESKTOPS AND LAPTOPS */
 
+/* RESPONSIVE LAYOUT
+   Keep the desktop design consistent on smaller screens.
+   Only adjust widths and prevent overflow where necessary. */
+
+/* Compact screens: allow scrolling instead of compressing the UI */
 @media (max-height: 760px) {
   .screen {
-    padding-top: 10px;
-    padding-bottom: 10px;
-    gap: 9px;
+    min-height: auto;
   }
 
-  .auth-panel {
-    padding: 14px;
-  }
-
-  .tabs {
-    margin-bottom: 10px;
-  }
-
-  #login-form,
-  #register-form {
-    gap: 6px;
-  }
-
-  #role-card {
-    padding: 12px 16px;
-  }
-
-  #role-symbol {
-    font-size: 2.1rem;
-  }
-
-  #role-card .role-reminder {
-    margin-top: 8px;
-    padding-top: 7px;
-  }
-
-  .oracle-bonus {
-    padding: 8px 12px;
-  }
-
-  .oracle-bonus p {
-    margin: 3px 0;
-  }
-
-  .mission-panel {
-    padding: 10px;
-  }
-
-  .mission-leader-card {
-    margin: 5px 0;
-    padding: 5px;
-  }
-
-  .mission-team-list {
-    gap: 4px;
-    margin: 5px 0;
-  }
-
-  .mission-player-option {
-    min-height: 31px;
-    padding: 3px;
-  }
-
-  .mission-player-option .mission-team-avatar {
-    width: 22px;
-    height: 22px;
-  }
-
-  .mission-notice {
-    padding: 5px;
+  #auth-screen,
+  #home-screen,
+  #lobby-screen,
+  #game-screen {
+    justify-content: flex-start;
   }
 }
 
-/* PHONES */
-
+/* Phones and narrow windows */
 @media (max-width: 650px) {
+  html,
+  body {
+    width: 100%;
+    min-width: 0;
+  }
+
   .topbar {
-    flex-basis: 48px;
+    flex-basis: 58px;
+    min-width: 0;
     padding: 0 14px;
   }
 
   footer {
-    flex-basis: 28px;
+    flex-basis: 34px;
+    min-width: 0;
     padding: 0 14px;
-    font-size: 0.58rem;
   }
 
   .screen {
-    min-height: 100%;
-    padding: 12px;
-    gap: 10px;
-  }
-
-  #auth-screen {
+    width: 100%;
+    min-height: auto;
+    padding: 20px 14px;
     gap: 14px;
   }
 
-  .hero {
-    max-width: 410px;
+  .panel {
+    min-width: 0;
+  }
+
+  /* Authentication */
+  #auth-screen {
+    justify-content: center;
   }
 
   .hero h1 {
-    margin: 5px 0;
-    font-size: clamp(1.6rem, 7vw, 2.3rem);
-  }
-
-  .hero p {
-    margin: 5px 0 0;
-    font-size: 0.8rem;
+    font-size: clamp(2rem, 7vw, 3.5rem);
   }
 
   .auth-panel {
-    padding: 14px;
+    padding: 20px;
   }
 
+  /* Home screen */
   #home-screen {
     justify-content: flex-start;
-    gap: 9px;
+    gap: 14px;
   }
 
-  .welcome h1 {
-    font-size: clamp(1.5rem, 6vw, 2rem);
-  }
-
-  .welcome p {
-    font-size: 0.8rem;
+  #home-screen > *,
+  .home-games {
+    width: 100%;
+    max-width: 480px;
   }
 
   .profile-panel {
-    padding: 9px 11px;
-    gap: 9px;
+    padding: 12px 16px;
+    gap: 13px;
   }
 
   #home-avatar {
-    width: 48px;
-    height: 48px;
+    width: 70px;
+    height: 70px;
+  }
+
+  #edit-profile {
+    flex-shrink: 0;
+    padding: 10px 15px;
+    font-size: 0.78rem;
+  }
+
+  .home-games {
+    padding: 14px;
+    gap: 16px;
+  }
+
+  .home-game-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 5px;
+  }
+
+  .home-game-tab {
+    min-height: 42px;
+    padding: 10px 7px;
+    font-size: 0.84rem;
+  }
+
+  .home-game-panel h2 {
+    font-size: 1.4rem;
+  }
+
+  .home-game-panel p {
+    margin-bottom: 16px;
+    font-size: 0.84rem;
+  }
+
+  .account-actions {
+    justify-content: center;
+  }
+
+  /* Lobby */
+  #lobby-screen {
+    justify-content: flex-start;
+    gap: 14px;
+  }
+
+  #lobby-screen > * {
+    width: 100%;
+    max-width: 520px;
+  }
+
+  .lobby-heading h1 {
+    font-size: clamp(1.5rem, 5vw, 2.25rem);
+  }
+
+  .room-code-card {
+    padding: 16px;
+  }
+
+  .room-code-row {
+    flex-wrap: wrap;
+  }
+
+  #display-room-code {
+    font-size: clamp(1.5rem, 6vw, 2.3rem);
+  }
+
+  .players-panel {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  #players-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .player-card {
+    padding: 9px;
+    gap: 8px;
+  }
+
+  .player-avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .player-name {
+    font-size: 0.82rem;
+  }
+
+  .lobby-footer {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  #lobby-hint {
+    flex: 1 1 140px;
+  }
+
+  #start-game {
+    flex: 0 0 auto;
+    min-width: 125px;
+  }
+
+  /* Game and role card */
+  #game-screen {
+    justify-content: flex-start;
+    gap: 14px;
+    padding: 20px 14px;
+  }
+
+  #game-screen > *,
+  #role-card,
+  .game-actions,
+  .oracle-bonus,
+  .host-page-controls {
+    width: 100%;
+    max-width: 460px;
+  }
+
+  .game-heading h1 {
+    font-size: clamp(1.35rem, 5vw, 2rem);
+  }
+
+  #role-card {
+    padding: 18px;
+  }
+
+  #role-symbol {
+    font-size: 3rem;
+  }
+
+  .oracle-bonus {
+    max-height: none;
+  }
+
+  .game-actions {
+    flex-wrap: wrap;
+  }
+
+  /* Mission panels */
+  .mission-panel {
+    width: 100%;
+    max-width: 520px;
+    padding: 14px;
+  }
+
+  .mission-team-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Prevent long labels and content escaping narrow panels */
+  .profile-info,
+  .players-heading,
+  .player-details,
+  .mission-topline,
+  .mission-leader-card,
+  .mission-player-option {
+    min-width: 0;
+  }
+
+  button {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Very narrow phones */
+@media (max-width: 360px) {
+  .topbar,
+  footer {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .screen {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .brand {
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+  }
+
+  .connection {
+    font-size: 0.65rem;
+  }
+
+  .profile-panel {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  #home-avatar {
+    width: 56px;
+    height: 56px;
   }
 
   #edit-profile {
@@ -1401,313 +1545,42 @@ main {
 
   .home-games {
     padding: 12px;
-    gap: 13px;
-  }
-
-  .home-game-tabs {
-    gap: 5px;
-    padding: 4px;
   }
 
   .home-game-tab {
-    min-height: 40px;
-    padding: 9px 5px;
-    font-size: 0.78rem;
-  }
-
-  .home-game-panel h2 {
-    font-size: 1.15rem;
-  }
-
-  .home-game-panel p {
-    margin-bottom: 12px;
-    font-size: 0.78rem;
-  }
-
-  #lobby-screen {
-    justify-content: flex-start;
-    gap: 9px;
-  }
-
-  .lobby-heading h1 {
-    margin: 5px 0;
-    font-size: 1.5rem;
-  }
-
-  .lobby-heading p {
-    margin: 4px 0 0;
-    font-size: 0.8rem;
-  }
-
-  .room-code-card {
-    padding: 10px 13px;
-  }
-
-  .room-code-row {
-    margin-top: 4px;
-  }
-
-  .players-panel {
-    gap: 8px;
-    padding: 11px;
-  }
-
-  #players-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
-  }
-
-  .player-card {
-    padding: 6px;
-    gap: 6px;
-  }
-
-  .player-avatar {
-    width: 30px;
-    height: 30px;
-  }
-
-  .player-name {
-    font-size: 0.75rem;
-  }
-
-  .lobby-footer {
-    gap: 7px;
-    padding-top: 8px;
-  }
-
-  #lobby-hint {
-    font-size: 0.7rem;
-  }
-
-  #start-game {
-    min-width: 100px;
-    padding: 8px;
-    font-size: 0.75rem;
-  }
-
-  #game-screen {
-    gap: 7px;
-    padding: 8px 12px;
-  }
-
-  .game-heading h1 {
-    margin: 4px 0;
-    font-size: 1.35rem;
-  }
-
-  .game-heading p {
-    font-size: 0.73rem;
-  }
-
-  #role-card {
-    padding: 12px;
-    border-radius: 16px;
-  }
-
-  #role-description,
-  #known-witches-intro {
-    font-size: 0.8rem;
-  }
-
-  .oracle-bonus {
-    max-height: 28dvh;
-  }
-
-  .mission-panel {
-    padding: 10px;
-  }
-}
-
-/* VERY SMALL PHONES */
-
-@media (max-width: 360px) {
-  .screen {
-    padding-right: 8px;
-    padding-left: 8px;
-  }
-
-  .auth-panel {
-    padding: 11px;
-  }
-
-  .home-games {
-    padding: 10px;
-  }
-
-  .home-game-tab {
-    font-size: 0.72rem;
-  }
-
-  .home-game-panel p {
+    padding: 9px 4px;
     font-size: 0.74rem;
   }
 
-  .home-game-panel button {
-    padding: 9px 7px;
-    font-size: 0.78rem;
-  }
-
   #players-list {
-    gap: 4px;
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .player-card {
-    padding: 5px;
-    gap: 4px;
-  }
-
-  .player-avatar {
-    width: 26px;
-    height: 26px;
-  }
-
-  .mission-panel {
-    padding: 8px;
-  }
-
-  .mission-player-option {
-    gap: 3px;
-    font-size: 0.69rem;
+  .mission-team-list {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
-/* SHORT PHONE SCREENS */
-
+/* Short screens: retain the design and let the page scroll */
 @media (max-height: 650px) {
-  .topbar {
-    flex-basis: 40px;
-  }
-
-  footer {
-    flex-basis: 24px;
-  }
-
   .screen {
-    padding-top: 5px;
-    padding-bottom: 5px;
-    gap: 6px;
+    min-height: auto;
+    padding-top: 14px;
+    padding-bottom: 14px;
   }
 
-  #auth-screen {
-    gap: 8px;
-  }
-
-  .hero h1 {
-    font-size: clamp(1.4rem, 5vh, 2rem);
-  }
-
-  .hero p {
-    font-size: 0.72rem;
-  }
-
-  .auth-panel {
-    padding: 9px;
-  }
-
-  .auth-panel .tabs {
-    margin-bottom: 6px;
-  }
-
-  #login-form,
-  #register-form {
-    gap: 4px;
-  }
-
-  #login-form input,
-  #register-form input:not([type="file"]) {
-    min-height: 34px;
-    padding: 7px 9px;
-  }
-
-  #login-form button,
-  #register-form button[type="submit"] {
-    min-height: 35px;
-    padding: 7px;
-  }
-
-  .photo-preview {
-    width: 48px;
-    height: 48px;
-  }
-
-  .photo-help {
-    font-size: 0.65rem;
-  }
-
-  .home-games {
-    gap: 9px;
-    padding: 9px;
-  }
-
-  .home-game-tab {
-    min-height: 35px;
-    padding: 7px 4px;
-  }
-
-  .home-game-panel p {
-    margin-bottom: 8px;
-  }
-
-  .game-heading .eyebrow {
-    font-size: 0.6rem;
-  }
-
-  .game-heading p {
-    margin: 3px 0;
+  #auth-screen,
+  #home-screen,
+  #lobby-screen,
+  #game-screen {
+    justify-content: flex-start;
   }
 
   #role-card {
-    padding: 8px 10px;
-  }
-
-  #role-symbol {
-    margin-bottom: 2px;
-    font-size: 1.8rem;
-  }
-
-  #role-title {
-    margin: 4px 0;
-    font-size: 1.2rem;
-  }
-
-  #role-description,
-  #known-witches-intro {
-    margin: 4px 0;
-    font-size: 0.74rem;
-    line-height: 1.3;
-  }
-
-  #known-witches-section {
-    margin-top: 6px;
-    padding-top: 6px;
-  }
-
-  #role-card .role-reminder {
-    margin-top: 5px;
-    padding-top: 5px;
-    font-size: 0.64rem;
+    flex-shrink: 0;
   }
 
   .oracle-bonus {
-    padding: 7px;
-  }
-
-  .oracle-bonus h3 {
-    font-size: 0.85rem;
-  }
-
-  .oracle-bonus p {
-    font-size: 0.7rem;
-  }
-
-  .host-page-controls p {
-    margin-bottom: 4px;
-    font-size: 0.7rem;
-  }
-
-  .host-page-controls button {
-    min-height: 35px;
-    padding: 7px;
+    max-height: none;
   }
 }
