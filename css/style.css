@@ -1,69 +1,1676 @@
-/* SIMPLE, FLAT DESIGN */
-@media (max-width: 650px) {
-  body {
-    background: var(--bg);
+
+:root {
+  color-scheme: dark;
+  --bg: #100d16;
+  --surface: #1b1525;
+  --surface-raised: #261c33;
+  --surface-soft: #21192d;
+  --border: #382b45;
+  --purple: #c5a0ff;
+  --purple-light: #e6d6ff;
+  --text: #f7f2fc;
+  --muted: #b8abc7;
+  --danger: #ff8dba;
+  --success: #a9e6c4;
+  --radius: 12px;
+  --page-width: 1060px;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  overscroll-behavior-y: contain;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+button,
+input,
+textarea,
+select {
+  max-width: 100%;
+  font: inherit;
+}
+
+button {
+  min-height: 40px;
+  padding: 10px 15px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--purple);
+  color: #21152e;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+
+button:active:not(:disabled) {
+  background: var(--purple-light);
+}
+
+button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #120e19;
+  color: var(--text);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid var(--purple);
+  outline-offset: 1px;
+}
+
+input[type="checkbox"] {
+  width: 17px;
+  min-height: 17px;
+  accent-color: var(--purple);
+}
+
+img {
+  max-width: 100%;
+}
+
+h1,
+h2,
+h3,
+p {
+  overflow-wrap: anywhere;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--text);
+  line-height: 1.2;
+}
+
+h1 {
+  margin: 8px 0;
+  font-size: clamp(1.6rem, 4vw, 2.5rem);
+  letter-spacing: -0.025em;
+}
+
+h2 {
+  margin: 8px 0;
+  font-size: clamp(1.05rem, 2.5vw, 1.4rem);
+}
+
+h3 {
+  margin: 8px 0;
+  font-size: 1rem;
+}
+
+p {
+  margin: 8px 0;
+  line-height: 1.45;
+}
+
+label {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.message {
+  color: var(--muted);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.message.error,
+.mission-message.error {
+  color: var(--danger);
+}
+
+.message.success,
+.mission-message.success {
+  color: var(--success);
+}
+
+/* HEADER */
+
+.topbar {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 58px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 22px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.brand {
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.connection {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+footer {
+  display: none !important;
+}
+
+/* SHARED SCREEN LAYOUT */
+
+main {
+  flex: 1 0 auto;
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.screen {
+  width: 100%;
+  max-width: var(--page-width);
+  min-width: 0;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 14px;
+}
+
+.panel {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.eyebrow {
+  display: block;
+  color: var(--purple);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.primary {
+  background: var(--purple);
+  color: #21152e;
+}
+
+.secondary {
+  border-color: var(--border);
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+.text-button {
+  min-height: 34px;
+  padding: 7px 10px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.text-button:active:not(:disabled) {
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+/* LOGIN AND REGISTRATION */
+
+#auth-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.hero {
+  width: 100%;
+  max-width: 410px;
+  min-width: 0;
+  text-align: center;
+}
+
+.hero h1 {
+  max-width: 500px;
+  margin: 8px auto;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  line-height: 1.08;
+}
+
+.hero h1 span {
+  color: var(--purple);
+}
+
+.hero p,
+.welcome p,
+.lobby-heading p,
+.game-heading p {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.auth-panel {
+  width: 100%;
+  max-width: 410px;
+  padding: 20px;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg);
+}
+
+.tab {
+  min-width: 0;
+  padding: 9px 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.tab.active,
+#show-login.active,
+#show-register.active {
+  border-color: transparent;
+  background: var(--surface-raised);
+  color: var(--purple-light);
+}
+
+#login-form,
+#register-form,
+#profile-form,
+#join-form {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+#login-form label,
+#register-form label:not(.photo-button),
+#profile-form label:not(.photo-button),
+#join-form label {
+  margin-top: 3px;
+}
+
+#login-form button,
+#register-form button[type="submit"],
+#profile-form button[type="submit"],
+#join-form button[type="submit"],
+#create-room {
+  width: 100%;
+  margin-top: 5px;
+}
+
+#auth-message,
+#home-message,
+#lobby-message {
+  min-height: 0;
+  margin: 5px 0 0;
+}
+
+#register-form input[type="file"],
+#profile-form input[type="file"],
+.photo-input {
+  display: none;
+}
+
+.photo-preview {
+  width: 78px;
+  height: 78px;
+  margin: 3px auto 5px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--purple);
+  border-radius: 50%;
+  background: var(--surface-raised);
+}
+
+#home-avatar {
+  width: 70px;
+  height: 70px;
+  flex-shrink: 0;
+  margin: 0;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--purple);
+  border-radius: 50%;
+  background: var(--surface-raised);
+}
+
+.profile-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.photo-placeholder {
+  padding: 5px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+}
+
+.photo-button {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.photo-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+/* HOME SCREEN */
+
+#home-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+#home-screen > * {
+  width: 100%;
+  max-width: 480px;
+}
+
+.welcome {
+  width: 100%;
+  text-align: center;
+}
+
+.welcome h1 {
+  margin: 5px 0;
+}
+
+.welcome p {
+  margin: 5px 0 0;
+}
+
+.profile-panel {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 12px 16px;
+}
+
+.profile-info {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-info strong {
+  overflow-wrap: anywhere;
+  font-size: 0.95rem;
+}
+
+.profile-info span {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+#edit-profile {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+}
+
+#profile-editor {
+  width: 100%;
+  padding: 14px;
+}
+
+#profile-editor h2 {
+  margin-top: 0;
+}
+
+/* HOST AND JOIN TABS */
+
+.home-games {
+  width: 100%;
+  max-width: 480px;
+  min-width: 0;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.home-game-tabs {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg);
+}
+
+.home-game-tab {
+  min-width: 0;
+  min-height: 42px;
+  padding: 10px 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.home-game-tab.active {
+  border-color: transparent;
+  background: var(--surface-raised);
+  color: var(--purple-light);
+}
+
+.home-game-tab:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+}
+
+.home-game-panel {
+  width: 100%;
+  min-width: 0;
+}
+
+.home-game-panel h2 {
+  margin: 0 0 6px;
+}
+
+.home-game-panel p {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.home-game-panel form {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.home-game-panel form label {
+  margin-bottom: -4px;
+}
+
+.home-game-panel input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.home-game-panel .primary {
+  width: 100%;
+  margin-top: 5px;
+}
+
+.home-game-panel[hidden] {
+  display: none !important;
+}
+
+.account-actions {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 0;
+}
+
+#home-screen .account-actions .text-button {
+  max-width: 100%;
+}
+
+#home-message {
+  width: 100%;
+  text-align: center;
+}
+
+/* LOBBY */
+
+#lobby-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+#lobby-screen > * {
+  width: 100%;
+  max-width: 520px;
+}
+
+#leave-room {
+  align-self: flex-start;
+}
+
+.lobby-heading {
+  width: 100%;
+  min-width: 0;
+}
+
+.lobby-heading h1 {
+  font-size: clamp(1.5rem, 3.5vw, 2.25rem);
+}
+
+.lobby-heading p {
+  margin-bottom: 0;
+}
+
+.room-code-card {
+  width: 100%;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.room-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+#display-room-code {
+  min-width: 0;
+  color: var(--purple-light);
+  font-size: clamp(1.5rem, 4vw, 2.3rem);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  overflow-wrap: anywhere;
+}
+
+#copy-code {
+  flex-shrink: 0;
+  font-size: 0.76rem;
+}
+
+.players-panel {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.players-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.players-heading h2 {
+  margin: 0;
+}
+
+#player-count {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+#lobby-status {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+#players-list {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 8px;
+}
+
+.player-card {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.player-avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-raised);
+}
+
+.player-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.player-details,
+.player-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.player-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.host-tag {
+  display: block;
+  margin-top: 3px;
+  color: var(--purple);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.lobby-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+#lobby-hint {
+  min-width: 0;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+#start-game {
+  flex-shrink: 0;
+  min-width: 125px;
+}
+
+#lobby-message {
+  text-align: center;
+}
+
+/* GAME SCREEN AND ROLE CARD */
+
+#game-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+}
+
+#game-screen > * {
+  width: 100%;
+  max-width: 460px;
+}
+
+.game-heading {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.game-heading h1 {
+  font-size: clamp(1.35rem, 3.5vw, 2rem);
+}
+
+.game-heading p {
+  margin: 4px 0;
+  font-size: 0.8rem;
+}
+
+#role-card {
+  width: 100%;
+  max-width: 460px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: clamp(14px, 2.5vh, 22px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+  text-align: center;
+}
+
+#role-symbol {
+  margin-bottom: 6px;
+  font-size: clamp(2rem, 7vh, 3.5rem);
+}
+
+#role-status {
+  display: block;
+  margin: 4px 0 8px;
+  color: var(--purple);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+#role-title {
+  margin: 8px 0;
+  font-size: clamp(1.25rem, 4vw, 1.8rem);
+}
+
+#role-description,
+#known-witches-intro {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+#role-card .role-reminder {
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.role-witch {
+  border-color: #a94e7c !important;
+  background: #30202d !important;
+}
+
+.role-witch #role-status {
+  color: #ff9acb;
+}
+
+.role-townsperson {
+  border-color: #7863a0 !important;
+}
+
+#known-witches-section {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+#known-witches-title {
+  font-size: 0.95rem;
+}
+
+#known-witches-list,
+#oracle-witch-list {
+  min-width: 0;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+#known-witches-list > li,
+#known-witches-list > div,
+#oracle-witch-list > div {
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid #794d76;
+  border-radius: 6px;
+  background: #38223c;
+  color: #ffd5ee;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+#role-error {
+  color: var(--danger);
+  font-size: 0.82rem;
+}
+
+#retry-role {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.game-actions {
+  width: 100%;
+  max-width: 460px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+#return-lobby {
+  font-size: 0.8rem;
+}
+
+/* ORACLE BONUS */
+
+.oracle-bonus {
+  width: 100%;
+  max-width: 460px;
+  min-width: 0;
+  max-height: 26dvh;
+  flex-shrink: 1;
+  margin: 0 auto;
+  padding: 12px 14px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  box-shadow: none;
+  color: var(--text);
+  text-align: center;
+}
+
+.oracle-bonus h3 {
+  margin: 0 0 6px;
+  color: var(--purple-light);
+  font-size: 0.95rem;
+}
+
+.oracle-bonus p {
+  margin: 4px 0 6px;
+  color: var(--muted);
+  font-size: 0.77rem;
+  line-height: 1.35;
+}
+
+/* HOST PAGE CONTROLS */
+
+.host-page-controls {
+  width: 100%;
+  max-width: 460px;
+  flex-shrink: 0;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.host-page-controls p {
+  margin: 2px 0 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.host-page-controls button {
+  width: 100%;
+}
+
+/* MISSION AND TEAM SELECTION */
+
+.mission-panel {
+  width: 100%;
+  max-width: 520px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+  color: var(--text);
+  text-align: left;
+}
+
+.mission-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+#mission-round {
+  color: var(--purple-light);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+#mission-phase {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.mission-panel h2 {
+  margin: 7px 0;
+}
+
+.mission-panel p {
+  margin: 6px 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.mission-leader-card {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 8px 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.mission-leader-avatar,
+.mission-team-avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 7px;
+  background: var(--surface-raised);
+}
+
+.mission-leader-avatar img,
+.mission-team-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mission-leader-label {
+  color: var(--muted);
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+}
+
+.mission-leader-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.mission-team-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.mission-player-option {
+  min-width: 0;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font-size: 0.75rem;
+  overflow: hidden;
+}
+
+.mission-player-option:has(input:checked) {
+  border-color: var(--purple);
+  background: #30233e;
+}
+
+.mission-player-option input {
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.mission-player-option .mission-team-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+}
+
+.mission-player-option-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+}
+
+.mission-player-option-note {
+  color: var(--purple-light);
+  font-size: 0.65rem;
+}
+
+.mission-selection-count {
+  margin: 7px 0;
+  color: var(--purple-light);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.mission-actions {
+  display: flex;
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.mission-actions button {
+  min-width: 0;
+  flex: 1;
+  padding: 8px;
+  font-size: 0.78rem;
+}
+
+.mission-button-danger {
+  border-color: #a94e7c;
+  background: #482237;
+  color: #ffcee0;
+}
+
+.mission-team-member {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-soft);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.mission-team-member::before {
+  content: "✦";
+  flex-shrink: 0;
+  color: var(--purple);
+}
+
+.mission-notice {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.mission-notice.success {
+  color: var(--success);
+}
+
+.mission-message {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.mission-message.error {
+  color: var(--danger);
+}
+
+.mission-message.success {
+  color: var(--success);
+}
+
+/* COMPACT DESKTOPS AND LAPTOPS */
+
+@media (max-height: 760px) {
+  .screen {
+    padding-top: 10px;
+    padding-bottom: 10px;
+    gap: 9px;
   }
 
-  .topbar {
-    background: transparent;
-    border-bottom: none;
-    box-shadow: none;
-    padding: 0 12px;
+  .auth-panel {
+    padding: 14px;
   }
 
-  .panel,
-  .home-games,
-  .room-code-card,
-  .players-panel,
-  #role-card,
-  .mission-panel,
-  .oracle-bonus {
-    background: var(--surface);
-    box-shadow: none;
-    border: none;
-    border-radius: 8px;
+  .tabs {
+    margin-bottom: 10px;
   }
 
-  .player-card,
-  .mission-leader-card,
-  .mission-team-member,
-  .mission-notice {
-    background: var(--surface-soft);
-    box-shadow: none;
-    border: none;
-    border-radius: 6px;
-  }
-
-  .tabs,
-  .home-game-tabs {
-    background: transparent;
-    border: none;
-    padding: 0;
+  #login-form,
+  #register-form {
     gap: 6px;
   }
 
-  .tab,
+  #role-card {
+    padding: 12px 16px;
+  }
+
+  #role-symbol {
+    font-size: 2.1rem;
+  }
+
+  #role-card .role-reminder {
+    margin-top: 8px;
+    padding-top: 7px;
+  }
+
+  .oracle-bonus {
+    padding: 8px 12px;
+  }
+
+  .oracle-bonus p {
+    margin: 3px 0;
+  }
+
+  .mission-panel {
+    padding: 10px;
+  }
+
+  .mission-leader-card {
+    margin: 5px 0;
+    padding: 5px;
+  }
+
+  .mission-team-list {
+    gap: 4px;
+    margin: 5px 0;
+  }
+
+  .mission-player-option {
+    min-height: 31px;
+    padding: 3px;
+  }
+
+  .mission-player-option .mission-team-avatar {
+    width: 22px;
+    height: 22px;
+  }
+
+  .mission-notice {
+    padding: 5px;
+  }
+}
+
+/* PHONES */
+
+@media (max-width: 650px) {
+  .topbar {
+    flex-basis: 48px;
+    padding: 0 14px;
+  }
+
+  .screen {
+    min-height: 100%;
+    padding: 12px;
+    gap: 10px;
+  }
+
+  #auth-screen {
+    gap: 14px;
+  }
+
+  .hero {
+    max-width: 410px;
+  }
+
+  .hero h1 {
+    margin: 5px 0;
+    font-size: clamp(1.6rem, 7vw, 2.3rem);
+  }
+
+  .hero p {
+    margin: 5px 0 0;
+    font-size: 0.8rem;
+  }
+
+  .auth-panel {
+    padding: 14px;
+  }
+
+  #home-screen {
+    justify-content: flex-start;
+    gap: 9px;
+  }
+
+  .welcome h1 {
+    font-size: clamp(1.5rem, 6vw, 2rem);
+  }
+
+  .welcome p {
+    font-size: 0.8rem;
+  }
+
+  .profile-panel {
+    padding: 9px 11px;
+    gap: 9px;
+  }
+
+  #home-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  #edit-profile {
+    padding: 8px;
+    font-size: 0.72rem;
+  }
+
+  .home-games {
+    padding: 12px;
+    gap: 13px;
+  }
+
+  .home-game-tabs {
+    gap: 4px;
+    padding: 4px;
+  }
+
   .home-game-tab {
-    border-radius: 6px;
+    min-height: 40px;
+    padding: 9px 5px;
+    font-size: 0.78rem;
   }
 
-  .tab.active,
-  .home-game-tab.active {
-    background: var(--surface-raised);
+  .home-game-panel h2 {
+    font-size: 1.15rem;
   }
 
-  input,
-  textarea,
-  select {
-    border-radius: 6px;
+  .home-game-panel p {
+    margin-bottom: 12px;
+    font-size: 0.78rem;
   }
 
-  button {
-    border-radius: 6px;
-    box-shadow: none;
+  #lobby-screen {
+    justify-content: flex-start;
+    gap: 9px;
   }
 
-  footer {
-    display: none !important;
+  .lobby-heading h1 {
+    margin: 5px 0;
+    font-size: 1.5rem;
+  }
+
+  .lobby-heading p {
+    margin: 4px 0 0;
+    font-size: 0.8rem;
+  }
+
+  .room-code-card {
+    padding: 10px 13px;
+  }
+
+  .room-code-row {
+    margin-top: 4px;
+  }
+
+  .players-panel {
+    gap: 8px;
+    padding: 11px;
+  }
+
+  #players-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .player-card {
+    padding: 6px;
+    gap: 6px;
+  }
+
+  .player-avatar {
+    width: 30px;
+    height: 30px;
+  }
+
+  .player-name {
+    font-size: 0.75rem;
+  }
+
+  .lobby-footer {
+    gap: 7px;
+    padding-top: 8px;
+  }
+
+  #lobby-hint {
+    font-size: 0.7rem;
+  }
+
+  #start-game {
+    min-width: 100px;
+    padding: 8px;
+    font-size: 0.75rem;
+  }
+
+  #game-screen {
+    gap: 7px;
+    padding: 8px 12px;
+  }
+
+  .game-heading h1 {
+    margin: 4px 0;
+    font-size: 1.35rem;
+  }
+
+  .game-heading p {
+    font-size: 0.73rem;
+  }
+
+  #role-card {
+    padding: 12px;
+    border-radius: 10px;
+  }
+
+  #role-description,
+  #known-witches-intro {
+    font-size: 0.8rem;
+  }
+
+  .oracle-bonus {
+    max-height: 28dvh;
+  }
+
+  .mission-panel {
+    padding: 10px;
+  }
+}
+
+/* VERY SMALL PHONES */
+
+@media (max-width: 360px) {
+  .screen {
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+
+  .auth-panel {
+    padding: 11px;
+  }
+
+  .home-games {
+    padding: 10px;
+  }
+
+  .home-game-tab {
+    font-size: 0.72rem;
+  }
+
+  .home-game-panel p {
+    font-size: 0.74rem;
+  }
+
+  .home-game-panel button {
+    padding: 9px 7px;
+    font-size: 0.78rem;
+  }
+
+  #players-list {
+    gap: 4px;
+  }
+
+  .player-card {
+    padding: 5px;
+    gap: 4px;
+  }
+
+  .player-avatar {
+    width: 26px;
+    height: 26px;
+  }
+
+  .mission-panel {
+    padding: 8px;
+  }
+
+  .mission-player-option {
+    gap: 3px;
+    font-size: 0.69rem;
+  }
+}
+
+/* SHORT PHONE SCREENS */
+
+@media (max-height: 650px) {
+  .topbar {
+    flex-basis: 40px;
+  }
+
+  .screen {
+    padding-top: 5px;
+    padding-bottom: 5px;
+    gap: 6px;
+  }
+
+  #auth-screen {
+    gap: 8px;
+  }
+
+  .hero h1 {
+    font-size: clamp(1.4rem, 5vh, 2rem);
+  }
+
+  .hero p {
+    font-size: 0.72rem;
+  }
+
+  .auth-panel {
+    padding: 9px;
+  }
+
+  .auth-panel .tabs {
+    margin-bottom: 6px;
+  }
+
+  #login-form,
+  #register-form {
+    gap: 4px;
+  }
+
+  #login-form input,
+  #register-form input:not([type="file"]) {
+    min-height: 34px;
+    padding: 7px 9px;
+  }
+
+  #login-form button,
+  #register-form button[type="submit"] {
+    min-height: 35px;
+    padding: 7px;
+  }
+
+  .photo-preview {
+    width: 48px;
+    height: 48px;
+  }
+
+  .photo-help {
+    font-size: 0.65rem;
+  }
+
+  .home-games {
+    gap: 9px;
+    padding: 9px;
+  }
+
+  .home-game-tab {
+    min-height: 35px;
+    padding: 7px 4px;
+  }
+
+  .home-game-panel p {
+    margin-bottom: 8px;
+  }
+
+  .game-heading .eyebrow {
+    font-size: 0.6rem;
+  }
+
+  .game-heading p {
+    margin: 3px 0;
+  }
+
+  #role-card {
+    padding: 8px 10px;
+  }
+
+  #role-symbol {
+    margin-bottom: 2px;
+    font-size: 1.8rem;
+  }
+
+  #role-title {
+    margin: 4px 0;
+    font-size: 1.2rem;
+  }
+
+  #role-description,
+  #known-witches-intro {
+    margin: 4px 0;
+    font-size: 0.74rem;
+    line-height: 1.3;
+  }
+
+  #known-witches-section {
+    margin-top: 6px;
+    padding-top: 6px;
+  }
+
+  #role-card .role-reminder {
+    margin-top: 5px;
+    padding-top: 5px;
+    font-size: 0.64rem;
+  }
+
+  .oracle-bonus {
+    padding: 7px;
+  }
+
+  .oracle-bonus h3 {
+    font-size: 0.85rem;
+  }
+
+  .oracle-bonus p {
+    font-size: 0.7rem;
+  }
+
+  .host-page-controls p {
+    margin-bottom: 4px;
+    font-size: 0.7rem;
+  }
+
+  .host-page-controls button {
+    min-height: 35px;
+    padding: 7px;
   }
 }
