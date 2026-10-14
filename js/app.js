@@ -35,18 +35,29 @@ let currentUser = null;
 let currentProfile = null;
 let currentRoomCode = null;
 let currentRoom = null;
+let currentSecret = null;
+
 let selectedRegisterFile = null;
 let selectedProfileFile = null;
+
 let stopRoomListener = null;
 let busy = false;
 let profileSetupMode = false;
 let authStateVersion = 0;
+
+let loadedSecretFor = null;
+let loadingSecretFor = null;
+let rolePopupShownFor = null;
 
 const registerSubmitButton = $("register-form")
   .querySelector("button[type='submit']");
 
 const originalRegisterButtonText =
   registerSubmitButton?.textContent || "Create account";
+
+/* -------------------------------------------------------
+   GENERAL HELPERS
+------------------------------------------------------- */
 
 function setProfileSetupMode(enabled) {
   profileSetupMode = enabled;
@@ -65,7 +76,12 @@ function setProfileSetupMode(enabled) {
 }
 
 function showScreen(screenId) {
-  ["auth-screen", "home-screen", "lobby-screen", "game-screen"].forEach(id => {
+  [
+    "auth-screen",
+    "home-screen",
+    "lobby-screen",
+    "game-screen"
+  ].forEach(id => {
     $(id).hidden = id !== screenId;
   });
 }
@@ -93,7 +109,7 @@ function setBusy(value) {
     button.disabled = value;
   });
 
-  if (!value && currentRoom) {
+  if (!value && currentRoom?.status === "lobby") {
     renderLobby();
   }
 }
@@ -117,6 +133,41 @@ function randomCode() {
   return code;
 }
 
+function friendlyError(error) {
+  const code = error?.code || "";
+
+  const messages = {
+    "auth/invalid-credential":
+      "Your email or password is incorrect.",
+    "auth/email-already-in-use":
+      "An account already uses that email. Choose Log in, or finish setting up the account if you are already signed in.",
+    "auth/invalid-email":
+      "Enter a valid email address.",
+    "auth/weak-password":
+      "Your password must be at least 6 characters.",
+    "auth/too-many-requests":
+      "Too many attempts. Please wait a while and try again.",
+    "auth/network-request-failed":
+      "Network error. Check your internet connection.",
+    "PERMISSION_DENIED":
+      "Firebase denied access. Check your published database rules.",
+    "database/permission-denied":
+      "Firebase denied access. Check your published Realtime Database rules."
+  };
+
+  if (messages[code]) return messages[code];
+
+  if (error?.message?.includes("PERMISSION_DENIED")) {
+    return "Firebase denied access. Check your published Realtime Database rules.";
+  }
+
+  return error?.message || "Something went wrong.";
+}
+
+/* -------------------------------------------------------
+   PROFILE PICTURES
+------------------------------------------------------- */
+
 function validateImage(file) {
   if (!file) {
     throw new Error("Please choose a profile picture first.");
@@ -133,8 +184,6 @@ function validateImage(file) {
   return true;
 }
 
-// Compress the selected picture in the browser.
-// No Firebase Storage or external image hosting is used.
 async function uploadAvatar(file) {
   validateImage(file);
 
@@ -195,7 +244,10 @@ async function uploadAvatar(file) {
         attempt.size
       );
 
-      const dataUrl = canvas.toDataURL("image/jpeg", attempt.quality);
+      const dataUrl = canvas.toDataURL(
+        "image/jpeg",
+        attempt.quality
+      );
 
       if (dataUrl.length <= MAX_COMPRESSED_LENGTH) {
         return dataUrl;
@@ -234,9 +286,11 @@ function showPhotoPreview(containerId, fileOrUrl) {
 
   image.onerror = () => {
     container.replaceChildren();
+
     const placeholder = document.createElement("span");
     placeholder.className = "photo-placeholder";
     placeholder.textContent = "Image unavailable";
+
     container.appendChild(placeholder);
   };
 
@@ -254,9 +308,11 @@ function showAvatar(container, photoUrl) {
 
     image.onerror = () => {
       container.replaceChildren();
+
       const fallback = document.createElement("span");
       fallback.className = "photo-placeholder";
       fallback.textContent = "?";
+
       container.appendChild(fallback);
     };
 
@@ -267,10 +323,16 @@ function showAvatar(container, photoUrl) {
   const fallback = document.createElement("span");
   fallback.className = "photo-placeholder";
   fallback.textContent = "👤";
+
   container.appendChild(fallback);
 }
 
-function connectPhotoPicker(fileInputId, cameraInputId, previewId, onSelect) {
+function connectPhotoPicker(
+  fileInputId,
+  cameraInputId,
+  previewId,
+  onSelect
+) {
   [fileInputId, cameraInputId].forEach(id => {
     $(id).addEventListener("change", event => {
       const file = event.target.files?.[0];
@@ -280,6 +342,7 @@ function connectPhotoPicker(fileInputId, cameraInputId, previewId, onSelect) {
         validateImage(file);
         onSelect(file);
         showPhotoPreview(previewId, file);
+
         setMessage(
           previewId === "register-avatar-preview"
             ? "auth-message"
@@ -317,6 +380,10 @@ connectPhotoPicker(
     selectedProfileFile = file;
   }
 );
+
+/* -------------------------------------------------------
+   PLAYER PROFILES
+------------------------------------------------------- */
 
 function validProfile(name, profile) {
   const avatarUrl = profile?.avatarUrl || profile?.avatar;
@@ -369,6 +436,7 @@ async function saveProfile(name, file = null) {
   };
 
   await set(ref(db, `users/${currentUser.uid}`), profile);
+
   currentProfile = profile;
 
   await updateRoomPlayerProfile(profile);
@@ -378,7 +446,8 @@ async function saveProfile(name, file = null) {
 function renderHomeProfile() {
   if (!currentProfile) return;
 
-  $("home-name").textContent = currentProfile.displayName || "Player";
+  $("home-name").textContent =
+    currentProfile.displayName || "Player";
 
   showAvatar(
     $("home-avatar"),
@@ -398,8 +467,6 @@ function renderHomeProfile() {
 async function loadProfile(user) {
   const snapshot = await get(ref(db, `users/${user.uid}`));
 
-  // The account exists in Authentication but may not have a profile
-  // because the first attempt to save it was denied by the database.
   if (!snapshot.exists()) {
     currentProfile = null;
     setProfileSetupMode(true);
@@ -440,7 +507,6 @@ async function loadProfile(user) {
     );
   }
 
-  // Migrate an older profile field if necessary.
   if (!profile.avatarUrl && profile.avatar) {
     profile.avatarUrl = profile.avatar;
   }
@@ -458,11 +524,13 @@ async function loadProfile(user) {
   setConnection("Connected");
 }
 
+/* -------------------------------------------------------
+   ACCOUNT REGISTRATION AND LOGIN
+------------------------------------------------------- */
+
 async function switchAuthTab(register) {
   if (busy) return;
 
-  // An incomplete signed-in account must be signed out before the
-  // user can switch to logging into a different account.
   if (!register && profileSetupMode && auth.currentUser) {
     setProfileSetupMode(false);
     await signOut(auth);
@@ -529,7 +597,6 @@ $("register-form").addEventListener("submit", async event => {
     await authReady;
 
     if (profileSetupMode) {
-      // Reuse the account that is already signed in.
       if (!auth.currentUser) {
         throw new Error(
           "Your session has expired. Please log in again."
@@ -555,8 +622,6 @@ $("register-form").addEventListener("submit", async event => {
       updatedAt: Date.now()
     };
 
-    // This requires the published Realtime Database rules to permit
-    // the signed-in user to write to /users/{their own UID}.
     await set(ref(db, `users/${currentUser.uid}`), profile);
 
     currentProfile = profile;
@@ -572,6 +637,7 @@ $("register-form").addEventListener("submit", async event => {
 
     renderHomeProfile();
     showScreen("home-screen");
+
     setMessage("home-message", "Your account is ready!", "success");
     setConnection("Connected");
   } catch (error) {
@@ -603,36 +669,9 @@ $("login-form").addEventListener("submit", async event => {
   }
 });
 
-function friendlyError(error) {
-  const code = error?.code || "";
-
-  const messages = {
-    "auth/invalid-credential":
-      "Your email or password is incorrect.",
-    "auth/email-already-in-use":
-      "An account already uses that email. Choose Log in, or finish setting up the account if you are already signed in.",
-    "auth/invalid-email":
-      "Enter a valid email address.",
-    "auth/weak-password":
-      "Your password must be at least 6 characters.",
-    "auth/too-many-requests":
-      "Too many attempts. Please wait a while and try again.",
-    "auth/network-request-failed":
-      "Network error. Check your internet connection.",
-    "PERMISSION_DENIED":
-      "Firebase denied access. Check that your published database rules match the current profile fields.",
-    "database/permission-denied":
-      "Firebase denied access. Check your published Realtime Database rules."
-  };
-
-  if (messages[code]) return messages[code];
-
-  if (error?.message?.includes("PERMISSION_DENIED")) {
-    return "Firebase denied access. Check your published Realtime Database rules.";
-  }
-
-  return error?.message || "Something went wrong.";
-}
+/* -------------------------------------------------------
+   ROOM CREATION AND JOINING
+------------------------------------------------------- */
 
 async function createRoom() {
   if (busy || !currentUser || !currentProfile) return;
@@ -659,7 +698,9 @@ async function createRoom() {
               [currentUser.uid]: {
                 displayName: currentProfile.displayName,
                 avatarUrl:
-                  currentProfile.avatarUrl || currentProfile.avatar || null,
+                  currentProfile.avatarUrl ||
+                  currentProfile.avatar ||
+                  null,
                 joinedAt: Date.now()
               }
             }
@@ -695,7 +736,11 @@ $("join-form").addEventListener("submit", async event => {
   $("room-code").value = code;
 
   if (code.length !== 4) {
-    setMessage("home-message", "Enter a four-letter room code.", "error");
+    setMessage(
+      "home-message",
+      "Enter a four-letter room code.",
+      "error"
+    );
     return;
   }
 
@@ -726,7 +771,8 @@ $("join-form").addEventListener("submit", async event => {
 
     await set(ref(db, `rooms/${code}/players/${currentUser.uid}`), {
       displayName: currentProfile.displayName,
-      avatarUrl: currentProfile.avatarUrl || currentProfile.avatar || null,
+      avatarUrl:
+        currentProfile.avatarUrl || currentProfile.avatar || null,
       joinedAt: players[currentUser.uid]?.joinedAt ?? Date.now()
     });
 
@@ -742,12 +788,24 @@ $("room-code").addEventListener("input", event => {
   event.target.value = normaliseCode(event.target.value);
 });
 
+/* -------------------------------------------------------
+   LOBBY AND ROOM LISTENER
+------------------------------------------------------- */
+
 function enterRoom(code) {
   if (stopRoomListener) stopRoomListener();
 
   currentRoomCode = code;
+  currentRoom = null;
+  currentSecret = null;
+
+  loadedSecretFor = null;
+  loadingSecretFor = null;
+  rolePopupShownFor = null;
+
   $("display-room-code").textContent = code;
   showScreen("lobby-screen");
+
   setMessage("lobby-message", "Connecting to the waiting room...");
 
   const roomRef = ref(db, `rooms/${code}`);
@@ -758,6 +816,7 @@ function enterRoom(code) {
       if (!snapshot.exists()) {
         currentRoomCode = null;
         currentRoom = null;
+        currentSecret = null;
 
         if (stopRoomListener) stopRoomListener();
         stopRoomListener = null;
@@ -771,6 +830,7 @@ function enterRoom(code) {
 
       if (currentRoom.status === "playing") {
         showScreen("game-screen");
+        loadMySecret(code);
         return;
       }
 
@@ -792,10 +852,12 @@ function enterRoom(code) {
 }
 
 function renderLobby() {
-  if (!currentRoom) return;
+  if (!currentRoom || currentRoom.status !== "lobby") return;
 
   const players = Object.entries(currentRoom.players || {})
-    .sort((a, b) => (a[1].joinedAt || 0) - (b[1].joinedAt || 0));
+    .sort((a, b) =>
+      (a[1].joinedAt || 0) - (b[1].joinedAt || 0)
+    );
 
   const isHost = currentRoom.hostUid === currentUser?.uid;
   const count = players.length;
@@ -810,7 +872,8 @@ function renderLobby() {
       : "Everyone ready? You can start when you're happy with the lobby."
     : "Waiting for the host to start the game...";
 
-  $("start-game").disabled = !isHost || count < MIN_PLAYERS || busy;
+  $("start-game").disabled =
+    !isHost || count < MIN_PLAYERS || busy;
 
   const list = $("players-list");
   list.replaceChildren();
@@ -821,6 +884,7 @@ function renderLobby() {
 
     const avatar = document.createElement("div");
     avatar.className = "player-avatar";
+
     showAvatar(avatar, player.avatarUrl || player.avatar || null);
 
     const details = document.createElement("div");
@@ -849,14 +913,551 @@ $("copy-code").addEventListener("click", async () => {
 
   try {
     await navigator.clipboard.writeText(currentRoomCode);
+
     $("copy-code").textContent = "Copied!";
+
     setTimeout(() => {
       $("copy-code").textContent = "Copy code";
     }, 1500);
   } catch {
-    setMessage("lobby-message", `Your room code is ${currentRoomCode}.`);
+    setMessage(
+      "lobby-message",
+      `Your room code is ${currentRoomCode}.`
+    );
   }
 });
+
+/* -------------------------------------------------------
+   ROLE ASSIGNMENT
+------------------------------------------------------- */
+
+function shuffled(items) {
+  const result = [...items];
+
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+
+  return result;
+}
+
+function getWitchCount(playerCount) {
+  return Math.max(2, Math.ceil(playerCount / 3));
+}
+
+async function startGame() {
+  if (
+    busy ||
+    !currentRoom ||
+    !currentRoomCode ||
+    currentRoom.hostUid !== currentUser?.uid
+  ) {
+    return;
+  }
+
+  setBusy(true);
+  setMessage("lobby-message", "Preparing the secret roles...");
+
+  const code = currentRoomCode;
+  const writtenUids = [];
+  let gameStarted = false;
+
+  try {
+    const snapshot = await get(ref(db, `rooms/${code}`));
+
+    if (!snapshot.exists()) {
+      throw new Error("This room no longer exists.");
+    }
+
+    const room = snapshot.val();
+
+    if (room.hostUid !== currentUser.uid) {
+      throw new Error("Only the current host can start the game.");
+    }
+
+    if (room.status !== "lobby") {
+      throw new Error("This game has already started.");
+    }
+
+    const players = Object.entries(room.players || {});
+
+    if (players.length < MIN_PLAYERS) {
+      throw new Error(
+        `You need at least ${MIN_PLAYERS} players to start.`
+      );
+    }
+
+    if (players.length > MAX_PLAYERS) {
+      throw new Error(
+        `A game can have no more than ${MAX_PLAYERS} players.`
+      );
+    }
+
+    const randomisedPlayers = shuffled(players);
+    const witchCount = getWitchCount(randomisedPlayers.length);
+
+    if (witchCount + 1 >= randomisedPlayers.length) {
+      throw new Error("There aren't enough players for these roles.");
+    }
+
+    const witchPlayers = randomisedPlayers.slice(0, witchCount);
+    const oraclePlayer = randomisedPlayers[witchCount];
+
+    const witchNames = {};
+
+    witchPlayers.forEach(([uid, player]) => {
+      witchNames[uid] = player.displayName || "Player";
+    });
+
+    const witchUids = new Set(
+      witchPlayers.map(([uid]) => uid)
+    );
+
+    const roles = {};
+
+    randomisedPlayers.forEach(([uid]) => {
+      roles[uid] = "townsperson";
+    });
+
+    witchPlayers.forEach(([uid]) => {
+      roles[uid] = "witch";
+    });
+
+    roles[oraclePlayer[0]] = "oracle";
+
+    const assignedAt = Date.now();
+
+    /*
+      Private role records are written outside /rooms.
+
+      Only the host can write these records.
+      Each player can read only their own record after
+      the room status changes to "playing".
+    */
+
+    for (const [uid, player] of randomisedPlayers) {
+      const role = roles[uid];
+
+      const secret = {
+        role,
+        assignedAt
+      };
+
+      if (role === "witch") {
+        const otherWitches = {};
+
+        Object.entries(witchNames).forEach(([witchUid, name]) => {
+          if (witchUid !== uid) {
+            otherWitches[witchUid] = name;
+          }
+        });
+
+        secret.knownWitches = otherWitches;
+      }
+
+      if (role === "oracle") {
+        secret.knownWitches = { ...witchNames };
+      }
+
+      await set(
+        ref(db, `playerSecrets/${code}/${uid}`),
+        secret
+      );
+
+      writtenUids.push(uid);
+    }
+
+    /*
+      The game is made visible only after every role
+      record has been written successfully.
+    */
+
+    await update(ref(db, `rooms/${code}`), {
+      status: "playing",
+      startedAt: assignedAt,
+      playerCount: randomisedPlayers.length,
+      witchCount
+    });
+
+    gameStarted = true;
+    setMessage("lobby-message");
+  } catch (error) {
+    if (!gameStarted) {
+      await Promise.all(
+        writtenUids.map(uid =>
+          remove(ref(db, `playerSecrets/${code}/${uid}`))
+            .catch(() => {})
+        )
+      );
+    }
+
+    setMessage(
+      "lobby-message",
+      friendlyError(error),
+      "error"
+    );
+  } finally {
+    setBusy(false);
+  }
+}
+
+$("start-game").addEventListener("click", startGame);
+
+/* -------------------------------------------------------
+   GAME SCREEN AND SECRET ROLE POPUPS
+------------------------------------------------------- */
+
+function prepareGameScreen() {
+  const panel = $("game-screen").querySelector(".panel");
+
+  if (!panel) {
+    throw new Error("The game screen could not be found.");
+  }
+
+  const heading = panel.querySelector("h1");
+  const paragraph = panel.querySelector("p");
+  const returnButton = $("return-lobby");
+
+  heading.textContent = "Your secret role";
+  paragraph.textContent =
+    "Your role is private. Keep it secret from the other players.";
+
+  returnButton.textContent = "Leave game";
+
+  return panel;
+}
+
+function clearRoleSummary() {
+  const oldSummary = $("role-summary");
+
+  if (oldSummary) oldSummary.remove();
+}
+
+function createRoleSummary() {
+  clearRoleSummary();
+
+  const panel = prepareGameScreen();
+  const summary = document.createElement("div");
+
+  summary.id = "role-summary";
+  summary.style.marginTop = "24px";
+  summary.style.padding = "20px";
+  summary.style.borderRadius = "14px";
+  summary.style.border = "1px solid var(--border)";
+  summary.style.background = "#ffffff08";
+
+  panel.insertBefore(summary, $("return-lobby"));
+
+  return summary;
+}
+
+function renderRoleLoading(message) {
+  const panel = prepareGameScreen();
+  const heading = panel.querySelector("h1");
+  const paragraph = panel.querySelector("p");
+
+  heading.textContent = "Revealing your role...";
+  paragraph.textContent = message;
+
+  const summary = createRoleSummary();
+
+  const retryButton = document.createElement("button");
+  retryButton.type = "button";
+  retryButton.className = "primary";
+  retryButton.textContent = "Try again";
+  retryButton.style.marginTop = "14px";
+
+  retryButton.addEventListener("click", () => {
+    if (currentRoomCode) {
+      loadedSecretFor = null;
+      loadMySecret(currentRoomCode, true);
+    }
+  });
+
+  summary.appendChild(retryButton);
+}
+
+function addRoleNameList(container, names) {
+  const list = document.createElement("ul");
+
+  list.style.margin = "14px 0 0";
+  list.style.paddingLeft = "22px";
+
+  names.forEach(name => {
+    const item = document.createElement("li");
+    item.textContent = name;
+    item.style.marginBottom = "6px";
+    item.style.color = "var(--text)";
+    list.appendChild(item);
+  });
+
+  container.appendChild(list);
+}
+
+function renderRole(secret) {
+  currentSecret = secret;
+
+  const panel = prepareGameScreen();
+  const heading = panel.querySelector("h1");
+  const paragraph = panel.querySelector("p");
+  const summary = createRoleSummary();
+
+  const roleTitles = {
+    townsperson: "🏘️ Townsperson",
+    witch: "🧙 Witch",
+    oracle: "🔮 Townsperson & Oracle"
+  };
+
+  const roleDescriptions = {
+    townsperson:
+      "Your goal is to help the Town complete its missions. Work with your friends, pay attention to their decisions, and try to identify the Witches.",
+    witch:
+      "You are secretly working against the Town. You can sabotage missions when you are selected for a team. Keep your identity hidden.",
+    oracle:
+      "You are a regular Townsperson with a secret advantage. You know who the Witches are, but you must keep your own identity hidden."
+  };
+
+  heading.textContent = roleTitles[secret.role] || "Your secret role";
+  paragraph.textContent = roleDescriptions[secret.role] ||
+    "Your role has been assigned.";
+
+  const title = document.createElement("h2");
+  title.textContent = roleTitles[secret.role] || "Secret role";
+  title.style.marginTop = "0";
+
+  const description = document.createElement("p");
+  description.textContent =
+    roleDescriptions[secret.role] || "Keep your role secret.";
+  description.style.marginBottom = "0";
+
+  summary.append(title, description);
+
+  const knownWitches = secret.knownWitches
+    ? Object.values(secret.knownWitches)
+    : [];
+
+  if (secret.role === "witch" && knownWitches.length) {
+    const label = document.createElement("h3");
+    label.textContent = "Your fellow Witches";
+    label.style.marginTop = "22px";
+
+    summary.appendChild(label);
+    addRoleNameList(summary, knownWitches);
+  }
+
+  if (secret.role === "oracle" && knownWitches.length) {
+    const label = document.createElement("h3");
+    label.textContent = "The Witches";
+    label.style.marginTop = "22px";
+
+    summary.appendChild(label);
+    addRoleNameList(summary, knownWitches);
+  }
+
+  $("return-lobby").textContent = "Leave game";
+}
+
+function showRolePopup(titleText, paragraphs, names, onClose) {
+  const overlay = document.createElement("div");
+
+  overlay.setAttribute("role", "presentation");
+  overlay.style.position = "fixed";
+  overlay.style.inset = "0";
+  overlay.style.zIndex = "9999";
+  overlay.style.display = "flex";
+  overlay.style.alignItems = "center";
+  overlay.style.justifyContent = "center";
+  overlay.style.padding = "20px";
+  overlay.style.background = "rgba(10, 6, 17, 0.88)";
+  overlay.style.backdropFilter = "blur(7px)";
+
+  const dialog = document.createElement("div");
+
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-modal", "true");
+  dialog.setAttribute("aria-labelledby", "role-popup-title");
+
+  dialog.style.width = "min(100%, 440px)";
+  dialog.style.maxHeight = "85vh";
+  dialog.style.overflowY = "auto";
+  dialog.style.padding = "28px";
+  dialog.style.borderRadius = "20px";
+  dialog.style.border = "1px solid var(--border)";
+  dialog.style.background =
+    "linear-gradient(145deg, #30203f, #1e172b)";
+  dialog.style.boxShadow = "0 25px 90px #00000080";
+
+  const heading = document.createElement("h2");
+  heading.id = "role-popup-title";
+  heading.textContent = titleText;
+  heading.style.marginTop = "0";
+
+  dialog.appendChild(heading);
+
+  paragraphs.forEach(text => {
+    const paragraph = document.createElement("p");
+    paragraph.textContent = text;
+    dialog.appendChild(paragraph);
+  });
+
+  if (names?.length) {
+    const list = document.createElement("ul");
+
+    list.style.paddingLeft = "22px";
+
+    names.forEach(name => {
+      const item = document.createElement("li");
+      item.textContent = name;
+      item.style.marginBottom = "8px";
+      item.style.color = "var(--text)";
+      list.appendChild(item);
+    });
+
+    dialog.appendChild(list);
+  }
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "primary";
+  button.textContent = "Got it";
+  button.style.width = "100%";
+  button.style.marginTop = "16px";
+
+  button.addEventListener("click", () => {
+    overlay.remove();
+
+    if (typeof onClose === "function") {
+      onClose();
+    }
+  });
+
+  dialog.appendChild(button);
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  button.focus();
+}
+
+function showRoleIntroduction(secret, key) {
+  if (rolePopupShownFor === key) return;
+
+  rolePopupShownFor = key;
+
+  if (secret.role === "witch") {
+    const otherWitches = secret.knownWitches
+      ? Object.values(secret.knownWitches)
+      : [];
+
+    showRolePopup(
+      "🧙 You are a Witch!",
+      [
+        "Your job is to secretly work against the Town. When you're selected for a mission, you can choose whether to succeed or ruin it.",
+        "The other Witches are:"
+      ],
+      otherWitches,
+      null
+    );
+
+    return;
+  }
+
+  /*
+    Both ordinary Townspeople and the Oracle first receive
+    the same Townsperson introduction.
+  */
+
+  showRolePopup(
+    "🏘️ You are a Townsperson!",
+    [
+      "Your goal is to help the Town complete its missions and work out who the Witches are.",
+      "You must always choose Succeed when you are on a mission."
+    ],
+    [],
+    secret.role === "oracle"
+      ? () => {
+          const witches = secret.knownWitches
+            ? Object.values(secret.knownWitches)
+            : [];
+
+          showRolePopup(
+            "🔮 You are also the Oracle!",
+            [
+              `The Witches are ${witches.length ? witches.join(", ") : "not available"}.`,
+              "Keep this information secret! If the Town wins, the Witches will get one final chance to identify you and steal the victory."
+            ],
+            [],
+            null
+          );
+        }
+      : null
+  );
+}
+
+async function loadMySecret(code, force = false) {
+  if (!currentUser || !code) return;
+
+  const key = `${code}:${currentUser.uid}`;
+
+  if (!force && loadedSecretFor === key && currentSecret) {
+    showScreen("game-screen");
+    return;
+  }
+
+  if (loadingSecretFor === key) return;
+
+  loadingSecretFor = key;
+
+  showScreen("game-screen");
+
+  renderRoleLoading("Your private role is being retrieved.");
+
+  try {
+    const snapshot = await get(
+      ref(db, `playerSecrets/${code}/${currentUser.uid}`)
+    );
+
+    if (
+      currentRoomCode !== code ||
+      currentUser?.uid === undefined ||
+      currentUser.uid !== key.split(":")[1]
+    ) {
+      return;
+    }
+
+    if (!snapshot.exists()) {
+      throw new Error(
+        "Your role isn't available yet. Please ask the host to check that the game started successfully, then try again."
+      );
+    }
+
+    const secret = snapshot.val();
+
+    if (
+      !["witch", "townsperson", "oracle"].includes(secret.role)
+    ) {
+      throw new Error("Your role record is invalid.");
+    }
+
+    loadedSecretFor = key;
+    currentSecret = secret;
+
+    renderRole(secret);
+    showRoleIntroduction(secret, key);
+  } catch (error) {
+    if (currentRoomCode === code) {
+      renderRoleLoading(friendlyError(error));
+    }
+  } finally {
+    if (loadingSecretFor === key) {
+      loadingSecretFor = null;
+    }
+  }
+}
+
+/* -------------------------------------------------------
+   LEAVING A ROOM
+------------------------------------------------------- */
 
 async function leaveRoom() {
   if (!currentRoomCode || !currentUser || busy) return;
@@ -885,7 +1486,13 @@ async function leaveRoom() {
       await remove(ref(db, `rooms/${code}/players/${uid}`));
     }
   } catch (error) {
-    setMessage("lobby-message", friendlyError(error), "error");
+    setMessage(
+      currentRoom?.status === "lobby"
+        ? "lobby-message"
+        : "home-message",
+      friendlyError(error),
+      "error"
+    );
     return;
   } finally {
     setBusy(false);
@@ -896,11 +1503,33 @@ async function leaveRoom() {
   stopRoomListener = null;
   currentRoomCode = null;
   currentRoom = null;
+  currentSecret = null;
+
+  loadedSecretFor = null;
+  loadingSecretFor = null;
+  rolePopupShownFor = null;
 
   showScreen("home-screen");
 }
 
 $("leave-room").addEventListener("click", leaveRoom);
+
+$("return-lobby").addEventListener("click", async () => {
+  if (currentRoom?.status === "playing") {
+    await leaveRoom();
+    return;
+  }
+
+  if (currentRoomCode) {
+    showScreen("lobby-screen");
+  } else {
+    showScreen("home-screen");
+  }
+});
+
+/* -------------------------------------------------------
+   PROFILE EDITING AND LOGOUT
+------------------------------------------------------- */
 
 $("edit-profile").addEventListener("click", () => {
   selectedProfileFile = null;
@@ -923,9 +1552,13 @@ $("profile-form").addEventListener("submit", async event => {
   setBusy(true);
 
   try {
-    await saveProfile($("profile-name").value, selectedProfileFile);
+    await saveProfile(
+      $("profile-name").value,
+      selectedProfileFile
+    );
 
     selectedProfileFile = null;
+
     $("profile-avatar-file").value = "";
     $("profile-camera-file").value = "";
     $("profile-editor").hidden = true;
@@ -952,25 +1585,13 @@ $("logout").addEventListener("click", async () => {
   }
 });
 
-$("start-game").addEventListener("click", async () => {
-  if (!currentRoom || currentRoom.hostUid !== currentUser?.uid) return;
-
-  setMessage(
-    "lobby-message",
-    "The lobby is ready! The gameplay engine will be added in the next stage."
-  );
-});
-
-$("return-lobby").addEventListener("click", () => {
-  if (currentRoomCode) {
-    showScreen("lobby-screen");
-  } else {
-    showScreen("home-screen");
-  }
-});
+/* -------------------------------------------------------
+   AUTHENTICATION STATE
+------------------------------------------------------- */
 
 onAuthStateChanged(auth, async user => {
   const thisVersion = ++authStateVersion;
+
   currentUser = user;
 
   if (!user) {
@@ -980,18 +1601,26 @@ onAuthStateChanged(auth, async user => {
     currentProfile = null;
     currentRoomCode = null;
     currentRoom = null;
+    currentSecret = null;
+
+    loadedSecretFor = null;
+    loadingSecretFor = null;
+    rolePopupShownFor = null;
+
     selectedRegisterFile = null;
     selectedProfileFile = null;
 
     setProfileSetupMode(false);
 
     showScreen("auth-screen");
+
     $("login-form").hidden = false;
     $("register-form").hidden = true;
     $("show-login").hidden = false;
     $("show-register").hidden = false;
 
     switchAuthTab(false);
+
     setConnection("Signed out");
     return;
   }
