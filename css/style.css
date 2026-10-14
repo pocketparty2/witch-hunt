@@ -1,3 +1,4 @@
+
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
@@ -11,6 +12,7 @@
   --accent: #c5a0ff;
   --accent-dark: #a37bdf;
   --danger: #ff8dba;
+  --success: #a9e6c4;
   font-family: 'Inter', sans-serif;
 }
 
@@ -42,11 +44,12 @@ button:not(:disabled):hover { transform: translateY(-1px); }
 [hidden] { display: none !important; }
 
 .topbar {
-  height: 72px;
+  min-height: 72px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 6%;
+  gap: 15px;
+  padding: 14px 6%;
   border-bottom: 1px solid #ffffff12;
 }
 
@@ -61,6 +64,7 @@ button:not(:disabled):hover { transform: translateY(-1px); }
 .connection {
   color: var(--muted);
   font-size: .78rem;
+  text-align: right;
 }
 
 main {
@@ -76,9 +80,9 @@ main {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.hero, .welcome, .lobby-heading {
+.hero, .welcome, .lobby-heading, .game-heading {
   text-align: center;
-  max-width: 620px;
+  max-width: 650px;
   margin: 0 auto 32px;
 }
 
@@ -89,9 +93,9 @@ main {
   letter-spacing: 2.2px;
 }
 
-h1, h2 {
+h1, h2, h3 {
   font-family: 'Cinzel', serif;
-  line-height: 1.25;
+  line-height: 1.3;
 }
 
 h1 {
@@ -102,6 +106,7 @@ h1 {
 h1 span { color: var(--accent); }
 
 h2 { font-size: 1.3rem; margin: 8px 0 12px; }
+h3 { font-size: 1.05rem; }
 
 p {
   color: var(--muted);
@@ -116,7 +121,10 @@ p {
   box-shadow: 0 18px 55px #0000001c;
 }
 
-#auth-screen .panel { max-width: 440px; margin: 0 auto; }
+.auth-panel {
+  max-width: 440px;
+  margin: 0 auto;
+}
 
 .tabs {
   display: grid;
@@ -141,7 +149,11 @@ p {
   color: var(--text);
 }
 
-form { display: flex; flex-direction: column; gap: 10px; }
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
 label {
   margin-top: 7px;
@@ -196,28 +208,7 @@ form .primary { margin-top: 13px; }
 }
 
 .message.error { color: var(--danger); }
-.message.success { color: #a9e6c4; }
-
-.avatar-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 9px;
-  margin: 5px 0 12px;
-}
-
-.avatar-choice {
-  width: 47px;
-  height: 47px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: #171120;
-  font-size: 1.5rem;
-}
-
-.avatar-choice.selected {
-  border: 2px solid var(--accent);
-  background: #594071;
-}
+.message.success { color: var(--success); }
 
 .profile-panel {
   display: flex;
@@ -229,9 +220,11 @@ form .primary { margin-top: 13px; }
 .big-avatar {
   width: 56px;
   height: 56px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
   border-radius: 16px;
   background: var(--panel-light);
   font-size: 2rem;
@@ -255,9 +248,7 @@ form .primary { margin-top: 13px; }
 }
 
 .card-icon { font-size: 2rem; }
-
 .home-grid .panel > p { min-height: 48px; }
-
 .home-grid .primary { width: 100%; }
 
 .account-actions {
@@ -273,7 +264,6 @@ form .primary { margin-top: 13px; }
 }
 
 .text-button:hover { color: var(--text); }
-
 #profile-editor { margin-bottom: 20px; }
 #profile-editor .secondary { margin-top: 4px; }
 
@@ -311,6 +301,7 @@ form .primary { margin-top: 13px; }
 }
 
 .players-heading p { margin: 0; font-size: .9rem; }
+
 .status-pill {
   border: 1px solid var(--border);
   background: #ffffff08;
@@ -342,8 +333,10 @@ form .primary { margin-top: 13px; }
   width: 43px;
   height: 43px;
   flex-shrink: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
   border-radius: 12px;
   background: var(--panel-light);
   font-size: 1.5rem;
@@ -366,17 +359,8 @@ form .primary { margin-top: 13px; }
 
 .lobby-footer p { margin: 0; font-size: .85rem; }
 
-footer {
-  display: flex;
-  justify-content: space-between;
-  gap: 15px;
-  padding: 22px 6%;
-  border-top: 1px solid #ffffff12;
-  color: var(--muted);
-  font-size: .78rem;
-}
+/* Profile pictures */
 
-/* Profile photo uploads */
 .photo-preview {
   width: 140px;
   height: 140px;
@@ -441,26 +425,165 @@ footer {
 .photo-help {
   text-align: center;
   color: #b9aec9;
-  font-size: 0.85rem;
+  font-size: .85rem;
   margin: 8px 0 18px;
 }
 
-.big-avatar,
-.player-avatar {
-  overflow: hidden;
-  flex-shrink: 0;
+/* Permanent role card */
+
+.game-heading { margin-bottom: 26px; }
+
+.role-card {
+  --role-accent: #c5a0ff;
+  width: min(100%, 650px);
+  margin: 0 auto;
+  padding: clamp(24px, 5vw, 42px);
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at 50% 0%, #49305e70 0%, transparent 65%),
+    linear-gradient(145deg, #261c37, #1b1427);
+  box-shadow: 0 24px 70px #00000030;
+  overflow-wrap: anywhere;
 }
 
-.big-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.role-card.role-witch {
+  --role-accent: #ff8dba;
+  border-color: #a94e7c;
+  background:
+    radial-gradient(ellipse at 50% 0%, #8c315550 0%, transparent 65%),
+    linear-gradient(145deg, #301b35, #1b1427);
 }
 
-.player-avatar {
+.role-card.role-oracle {
+  --role-accent: #a9d8ff;
+  border-color: #5b729d;
+  background:
+    radial-gradient(ellipse at 50% 0%, #405d9c55 0%, transparent 65%),
+    linear-gradient(145deg, #22243e, #1b1427);
+}
+
+.role-card.role-townsperson {
+  --role-accent: #a9e6c4;
+  border-color: #4e806a;
+}
+
+.role-symbol {
+  display: grid;
+  place-items: center;
+  width: 82px;
+  height: 82px;
+  margin: 0 auto 20px;
+  border: 1px solid color-mix(in srgb, var(--role-accent) 45%, transparent);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--role-accent) 12%, transparent);
+  font-size: 2.6rem;
+}
+
+.role-status {
+  display: inline-block;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--role-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--role-accent) 9%, transparent);
+  color: var(--role-accent);
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.role-card h2 {
+  color: var(--role-accent);
+  font-size: clamp(1.5rem, 5vw, 2.1rem);
+  margin: 22px 0 12px;
+}
+
+.role-card > p {
+  max-width: 490px;
+  margin: 0 auto;
+}
+
+.known-witches-section {
+  margin-top: 28px;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--role-accent) 35%, transparent);
+  border-radius: 15px;
+  background: #00000016;
+  text-align: left;
+}
+
+.known-witches-section h3 {
+  color: var(--role-accent);
+  margin: 0 0 6px;
+}
+
+.known-witches-intro {
+  font-size: .88rem;
+  margin: 0 0 12px !important;
+}
+
+.known-witches-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 9px;
+}
+
+.known-witches-list li {
   display: flex;
   align-items: center;
+  gap: 10px;
+  padding: 11px 13px;
+  border: 1px solid #ffffff12;
+  border-radius: 10px;
+  background: #ffffff06;
+  color: var(--text);
+}
+
+.known-witches-list li::before {
+  content: "✦";
+  color: var(--role-accent);
+}
+
+.role-error {
+  margin-top: 20px;
+  padding: 13px;
+  border: 1px solid #ff8dba55;
+  border-radius: 10px;
+  background: #ff8dba0c;
+  color: var(--danger);
+  font-size: .9rem;
+  line-height: 1.6;
+}
+
+.retry-button {
+  display: block;
+  margin: 16px auto 0;
+}
+
+.role-reminder {
+  margin: 26px 0 0 !important;
+  padding-top: 18px;
+  border-top: 1px solid #ffffff12;
+  font-size: .78rem;
+}
+
+.game-actions {
+  display: flex;
   justify-content: center;
+  margin-top: 22px;
+}
+
+footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 22px 6%;
+  border-top: 1px solid #ffffff12;
+  color: var(--muted);
+  font-size: .78rem;
 }
 
 @media (max-width: 600px) {
@@ -470,5 +593,9 @@ footer {
   .profile-panel { flex-wrap: wrap; }
   .lobby-footer { align-items: stretch; flex-direction: column; }
   .lobby-footer .primary { width: 100%; }
+  .players-heading { align-items: flex-start; }
+  .role-card { padding: 24px 18px; }
+  .role-symbol { width: 70px; height: 70px; font-size: 2.2rem; }
+  .known-witches-section { padding: 16px; }
   footer { flex-direction: column; text-align: center; }
 }
