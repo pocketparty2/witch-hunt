@@ -12,7 +12,7 @@ const firebaseConfig = {
   authDomain: "witch-hunt-5bd40.firebaseapp.com",
 
   // Keep the REAL database URL that works in your current version.
-  databaseURL: "PASTE_YOUR_REAL_DATABASE_URL_HERE",
+  databaseURL: "https://witch-hunt-5bd40-default-rtdb.europe-west1.firebasedatabase.app/",
 
   projectId: "witch-hunt-5bd40",
   storageBucket: "witch-hunt-5bd40.firebasestorage.app",
