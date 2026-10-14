@@ -1643,3 +1643,115 @@ main {
     padding: 7px;
   }
 }
+
+/* Keep every screen in a vertical, phone-style layout */
+
+#auth-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.hero {
+  width: 100%;
+  max-width: 410px;
+  text-align: center;
+}
+
+.auth-panel {
+  width: 100%;
+  max-width: 410px;
+}
+
+#home-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+#home-screen > * {
+  width: 100%;
+  max-width: 480px;
+}
+
+.home-grid {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.home-grid > .panel {
+  width: 100%;
+}
+
+#lobby-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+#lobby-screen > * {
+  width: 100%;
+  max-width: 520px;
+}
+
+.lobby-heading {
+  width: 100%;
+}
+
+.room-code-card {
+  width: 100%;
+}
+
+.players-panel {
+  width: 100%;
+  min-height: 0;
+}
+
+#players-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#game-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+
+#game-screen > * {
+  width: 100%;
+  max-width: 460px;
+}
+
+#role-card,
+.oracle-bonus,
+.host-page-controls,
+.mission-panel,
+.game-actions {
+  width: 100%;
+  max-width: 460px;
+}
+
+/* Keep the vertical layout on smaller screens too */
+
+@media (max-width: 650px) {
+  #auth-screen,
+  #home-screen,
+  #lobby-screen,
+  #game-screen {
+    flex-direction: column;
+  }
+
+  .home-grid {
+    flex-direction: column;
+  }
+}
