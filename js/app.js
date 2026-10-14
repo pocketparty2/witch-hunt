@@ -1432,7 +1432,7 @@ function majorityRequired(room) {
 function missionPhaseLabel(phase) {
   const labels = {
     proposal: "Choose a team",
-    approval: "Vote on the team",
+    approval: "Leader deciding",
     mission: "Secret mission vote",
     results: "Mission results",
     "oracle-guess": "Final guess",
@@ -1441,6 +1441,7 @@ function missionPhaseLabel(phase) {
 
   return labels[phase] || "Mission";
 }
+
 
 function setMissionContent(html) {
   $("mission-content").innerHTML = html;
@@ -1620,46 +1621,50 @@ function renderProposalPhase(mission) {
   return html;
 }
 
+
 function renderApprovalPhase(mission) {
   const team = missionTeamUids(mission);
-  const votes = getMissionVotes(mission, "approvalVotes");
-  const alreadyVoted = Object.hasOwn(votes, currentUser?.uid);
-  const yes = countVotes(votes, true);
-  const no = countVotes(votes, false);
-  const required = majorityRequired(currentRoom);
+  const isLeader = mission.leaderUid === currentUser?.uid;
 
   let html = `
-    <h2>Vote on the proposed team</h2>
+    <h2>${isLeader ? "Approve your proposed team?" : "Waiting for the leader"}</h2>
     <p>
-      Everyone votes individually. The team is accepted only if it receives
-      a majority of approval votes.
+      Only the current mission leader can approve or reject this team.
+      This is a decision, not a player vote.
     </p>
     ${missionTeamMarkup(team, mission.leaderUid)}
-    <div class="mission-notice">
-      Approvals: ${yes} · Rejections: ${no} ·
-      ${required} approvals required
-    </div>
   `;
 
-  if (alreadyVoted) {
+  if (!isLeader) {
     return html + `
       <div class="mission-notice">
-        Your vote has been recorded. Waiting for the remaining players.
+        Waiting for ${escapeHTML(getPlayerName(mission.leaderUid))}
+        to approve or reject the proposed team.
       </div>
     `;
   }
 
   html += `
     <div class="mission-actions">
-      <button id="approval-yes" type="button" ${busy ? "disabled" : ""}>
+      <button id="leader-approve-team" type="button" ${busy ? "disabled" : ""}>
         Approve team
       </button>
-      <button id="approval-no" class="mission-button-danger"
-        type="button" ${busy ? "disabled" : ""}>
+      <button id="leader-reject-team"
+        class="mission-button-danger"
+        type="button"
+        ${busy ? "disabled" : ""}>
         Reject team
       </button>
     </div>
   `;
+
+  if (Number(mission.rejectionCount) > 0) {
+    html += `
+      <p class="mission-notice">
+        Rejected teams: ${Number(mission.rejectionCount)} / 5
+      </p>
+    `;
+  }
 
   return html;
 }
@@ -1917,8 +1922,8 @@ function bindMissionEvents() {
 
   $("submit-mission-team")?.addEventListener("click", submitMissionTeam);
 
-  $("approval-yes")?.addEventListener("click", () => castApprovalVote(true));
-  $("approval-no")?.addEventListener("click", () => castApprovalVote(false));
+  $("leader-approve-team")?.addEventListener("click", approveMissionTeam);
+  $("leader-reject-team")?.addEventListener("click", rejectMissionTeam);
 
   $("mission-succeed")?.addEventListener("click", () => castMissionVote("succeed"));
   $("mission-ruin")?.addEventListener("click", () => castMissionVote("ruin"));
@@ -1987,7 +1992,7 @@ async function submitMissionTeam() {
     });
 
     selectedTeam = new Set();
-    missionSuccess("Team proposed. Everyone can now vote on it.");
+    missionSuccess("Team proposed. The mission leader must approve or reject it.");
   } catch (error) {
     missionError(friendlyError(error));
   } finally {
@@ -1999,20 +2004,20 @@ async function submitMissionTeam() {
    INDIVIDUAL TEAM APPROVAL
 ====================================================== */
 
-async function castApprovalVote(approve) {
+
+/* ======================================================
+   LEADER-ONLY TEAM APPROVAL
+====================================================== */
+
+async function approveMissionTeam() {
   const mission = getMission();
 
   if (
     busy ||
     !mission ||
     mission.phase !== "approval" ||
-    !currentRoom.players?.[currentUser?.uid]
-  ) return;
-
-  const existingVotes = getMissionVotes(mission, "approvalVotes");
-
-  if (Object.hasOwn(existingVotes, currentUser.uid)) {
-    missionError("You've already voted on this team.");
+    mission.leaderUid !== currentUser?.uid
+  ) {
     return;
   }
 
@@ -2021,53 +2026,31 @@ async function castApprovalVote(approve) {
   try {
     const snapshot = await get(roomRef());
 
-    if (!snapshot.exists()) throw new Error("This room no longer exists.");
+    if (!snapshot.exists()) {
+      throw new Error("This room no longer exists.");
+    }
 
     const room = snapshot.val();
     const fresh = room.mission;
 
-    if (fresh?.phase !== "approval") {
-      throw new Error("The voting phase has ended.");
+    if (
+      room.status !== "playing" ||
+      room.gamePhase !== "team-selection" ||
+      fresh?.phase !== "approval" ||
+      fresh?.leaderUid !== currentUser.uid
+    ) {
+      throw new Error("You are not the current mission leader, or the team has changed.");
     }
 
-    const votes = getMissionVotes(fresh, "approvalVotes");
+    const team = missionTeamUids(fresh);
 
-    if (Object.hasOwn(votes, currentUser.uid)) {
-      throw new Error("You've already voted on this team.");
+    if (
+      team.length !== Number(fresh.teamSize) ||
+      team.some(uid => !room.players?.[uid])
+    ) {
+      throw new Error("The proposed team is no longer valid.");
     }
 
-    const voteUpdate = {};
-    voteUpdate[`mission/approvalVotes/${currentUser.uid}`] = approve;
-    voteUpdate["mission/updatedAt"] = Date.now();
-
-    await update(roomRef(), voteUpdate);
-
-    missionSuccess("Your vote has been recorded.");
-  } catch (error) {
-    missionError(friendlyError(error));
-  } finally {
-    setBusy(false);
-  }
-}
-
-async function resolveApprovalIfComplete() {
-  const mission = getMission();
-
-  if (!mission || mission.phase !== "approval") return;
-
-  const votes = getMissionVotes(mission, "approvalVotes");
-  const playerUids = Object.keys(currentRoom.players || {});
-
-  if (!playerUids.length) return;
-
-  const allVoted = playerUids.every(uid => Object.hasOwn(votes, uid));
-
-  if (!allVoted) return;
-
-  const yes = countVotes(votes, true);
-  const needed = majorityRequired(currentRoom);
-
-  if (yes >= needed) {
     await update(roomRef("mission"), {
       phase: "mission",
       missionVotes: {},
@@ -2075,41 +2058,87 @@ async function resolveApprovalIfComplete() {
       updatedAt: Date.now()
     });
 
-    missionSuccess("The team has been approved. Secret mission voting begins.");
-    return;
+    missionSuccess("You approved the team. Secret mission voting begins.");
+  } catch (error) {
+    missionError(friendlyError(error));
+  } finally {
+    setBusy(false);
   }
-
-  const rejectedCount = (Number(mission.rejectionCount) || 0) + 1;
-
-  if (rejectedCount >= 5) {
-    await finishGame(
-      "witches",
-      "Five proposed teams were rejected. The Witches win!"
-    );
-
-    return;
-  }
-
-  const nextLeader = nextLeaderUid(currentRoom, mission.leaderUid);
-
-  await update(roomRef("mission"), {
-    phase: "proposal",
-    leaderUid: nextLeader,
-    teamSize: requiredTeamSize(currentRoom, mission),
-    rejectionCount: rejectedCount,
-    proposal: null,
-    approvalVotes: {},
-    missionVotes: {},
-    updatedAt: Date.now()
-  });
-
-  selectedTeam = new Set();
-
-  missionSuccess(
-    `The team was rejected. ${getPlayerName(nextLeader)} is the next leader.`
-  );
 }
 
+async function rejectMissionTeam() {
+  const mission = getMission();
+
+  if (
+    busy ||
+    !mission ||
+    mission.phase !== "approval" ||
+    mission.leaderUid !== currentUser?.uid
+  ) {
+    return;
+  }
+
+  setBusy(true);
+
+  try {
+    const snapshot = await get(roomRef());
+
+    if (!snapshot.exists()) {
+      throw new Error("This room no longer exists.");
+    }
+
+    const room = snapshot.val();
+    const fresh = room.mission;
+
+    if (
+      room.status !== "playing" ||
+      room.gamePhase !== "team-selection" ||
+      fresh?.phase !== "approval" ||
+      fresh?.leaderUid !== currentUser.uid
+    ) {
+      throw new Error("You are not the current mission leader, or the team has changed.");
+    }
+
+    const rejectedCount = (Number(fresh.rejectionCount) || 0) + 1;
+
+    if (rejectedCount >= 5) {
+      await finishGame(
+        "witches",
+        "Five proposed teams were rejected. The Witches win!"
+      );
+
+      return;
+    }
+
+    const nextLeader = nextLeaderUid(room, fresh.leaderUid);
+
+    if (!nextLeader) {
+      throw new Error("Couldn't determine the next mission leader.");
+    }
+
+    await update(roomRef("mission"), {
+      phase: "proposal",
+      leaderUid: nextLeader,
+      teamSize: requiredTeamSize(room, fresh),
+      rejectionCount: rejectedCount,
+      proposal: null,
+      approvalVotes: {},
+      missionVotes: {},
+      results: null,
+      updatedAt: Date.now()
+    });
+
+    selectedTeam = new Set();
+
+    missionSuccess(
+      `You rejected the team. ${getPlayerName(nextLeader)} is the next leader and must propose a new team.`
+    );
+  } catch (error) {
+    missionError(friendlyError(error));
+  } finally {
+    setBusy(false);
+  }
+}
 /* ======================================================
    SECRET MISSION VOTING
 ====================================================== */
@@ -2478,18 +2507,6 @@ async function checkMissionState() {
 
   try {
     resolvingMissionState = true;
-
-    if (mission.phase === "approval") {
-      const votes = getMissionVotes(mission, "approvalVotes");
-      const playerUids = Object.keys(currentRoom.players || {});
-
-      if (
-        playerUids.length > 0 &&
-        playerUids.every(uid => Object.hasOwn(votes, uid))
-      ) {
-        await resolveApprovalIfComplete();
-      }
-    }
 
     if (mission.phase === "mission") {
       const team = missionTeamUids(mission);
