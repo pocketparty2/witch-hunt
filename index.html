@@ -21,7 +21,7 @@
         <p>Gather your friends. Complete the missions. Find the witches before it's too late.</p>
       </div>
 
-      <div class="panel">
+      <div class="panel auth-panel">
         <div class="tabs">
           <button id="show-login" class="tab active" type="button">Log in</button>
           <button id="show-register" class="tab" type="button">Create account</button>
@@ -49,8 +49,7 @@
 
           <div class="photo-actions">
             <label class="secondary photo-button" for="register-avatar-file">Choose a photo</label>
-            <input id="register-avatar-file" class="photo-input" type="file"
-              accept="image/*">
+            <input id="register-avatar-file" class="photo-input" type="file" accept="image/*">
             <label class="secondary photo-button" for="register-camera-file">Take a photo</label>
             <input id="register-camera-file" class="photo-input" type="file"
               accept="image/*" capture="user">
@@ -102,8 +101,7 @@
 
           <div class="photo-actions">
             <label class="secondary photo-button" for="profile-avatar-file">Choose a photo</label>
-            <input id="profile-avatar-file" class="photo-input" type="file"
-              accept="image/*">
+            <input id="profile-avatar-file" class="photo-input" type="file" accept="image/*">
             <label class="secondary photo-button" for="profile-camera-file">Take a photo</label>
             <input id="profile-camera-file" class="photo-input" type="file"
               accept="image/*" capture="user">
@@ -172,9 +170,7 @@
 
         <div class="lobby-footer">
           <p id="lobby-hint">Waiting for your friends to join...</p>
-          <button id="start-game" class="primary" type="button" disabled>
-            Start game
-          </button>
+          <button id="start-game" class="primary" type="button" disabled>Start game</button>
         </div>
       </div>
 
@@ -182,15 +178,38 @@
     </section>
 
     <section id="game-screen" class="screen" hidden>
-      <div class="panel">
-        <span class="eyebrow">WITCH HUNT</span>
-        <h1>The game engine is next.</h1>
-        <p>Your room and player list are connected. We'll add secret roles,
-          missions, leader selection, task votes, scoring and the Oracle's
-          final guess in the next stage.</p>
-        <button id="return-lobby" class="secondary" type="button">
-          Return to lobby
+      <div class="game-heading">
+        <span class="eyebrow">THE GAME HAS BEGUN</span>
+        <h1>Your place in the village.</h1>
+        <p>Your role is private. Only you can see your secret role information.</p>
+      </div>
+
+      <article id="role-card" class="role-card" aria-live="polite">
+        <div id="role-symbol" class="role-symbol" aria-hidden="true">🔮</div>
+        <span id="role-status" class="role-status">RETRIEVING YOUR ROLE</span>
+        <h2 id="role-title">Your secret role is being prepared...</h2>
+        <p id="role-description">
+          Your private role information is being retrieved from the village records.
+        </p>
+
+        <div id="known-witches-section" class="known-witches-section" hidden>
+          <h3 id="known-witches-title">The Witches</h3>
+          <p id="known-witches-intro">Keep this information secret.</p>
+          <ul id="known-witches-list" class="known-witches-list"></ul>
+        </div>
+
+        <div id="role-error" class="role-error" role="status" hidden></div>
+        <button id="retry-role" class="primary retry-button" type="button" hidden>
+          Try loading my role again
         </button>
+
+        <p class="role-reminder">
+          🔒 Keep your role and any secret information to yourself.
+        </p>
+      </article>
+
+      <div class="game-actions">
+        <button id="return-lobby" class="secondary" type="button">Leave game</button>
       </div>
     </section>
   </main>
