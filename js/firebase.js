@@ -25,5 +25,8 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const authReady = setPersistence(auth, browserLocalPersistence);
-export const db = getDatabase(app);
+export const db = getDatabase(
+  app,
+  "https://witch-hunt-5bd40-default-rtdb.europe-west1.firebasedatabase.app/"
+);
 export const storage = getStorage(app);
