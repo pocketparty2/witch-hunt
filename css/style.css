@@ -1,4 +1,3 @@
-
 :root {
   color-scheme: dark;
   --bg: #100d16;
@@ -1672,5 +1671,105 @@ main {
   .host-page-controls button {
     min-height: 35px;
     padding: 7px;
+  }
+}
+
+/* FLAT DESIGN — PC AND PHONE */
+
+body {
+  background: var(--bg) !important;
+}
+
+.topbar {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Flatten panels without removing their colour accents */
+.panel,
+.home-games,
+.room-code-card,
+.players-panel,
+#role-card,
+.mission-panel,
+.oracle-bonus {
+  background-image: none !important;
+  box-shadow: none !important;
+  border-radius: 8px !important;
+}
+
+/* Keep the witch role visually distinct */
+#role-card.role-witch,
+.role-witch {
+  background-image: none !important;
+  background-color: #30202d !important;
+  border-color: #a94e7c !important;
+}
+
+#role-card.role-townsperson {
+  background-image: none !important;
+}
+
+/* Simpler player cards */
+.player-card,
+.mission-leader-card,
+.mission-team-member,
+.mission-notice {
+  background-image: none !important;
+  box-shadow: none !important;
+  border-radius: 6px !important;
+}
+
+/* Keep coloured text and active-state colours */
+.tab,
+.home-game-tab {
+  box-shadow: none !important;
+  border-radius: 6px !important;
+}
+
+.tab.active,
+.home-game-tab.active {
+  background-image: none !important;
+  background-color: var(--surface-raised) !important;
+  color: var(--purple-light) !important;
+}
+
+/* Simpler form controls */
+input,
+textarea,
+select,
+button {
+  box-shadow: none !important;
+  border-radius: 6px !important;
+}
+
+/* Invisible header background, visible header text */
+.topbar .brand,
+.topbar .connection {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Remove footer */
+footer {
+  display: none !important;
+}
+
+/* Keep the same flat styling at every screen width */
+@media (max-width: 650px) {
+  .panel,
+  .home-games,
+  .room-code-card,
+  .players-panel,
+  #role-card,
+  .mission-panel,
+  .oracle-bonus {
+    box-shadow: none !important;
+  }
+
+  .topbar {
+    background: transparent !important;
+    border: none !important;
   }
 }
