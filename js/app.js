@@ -857,6 +857,8 @@ function enterRoom(code) {
 
       currentRoom = snapshot.val();
 
+      checkMissionState();
+
       if (currentRoom.status === "playing") {
         showScreen("game-screen");
 
