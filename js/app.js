@@ -15,19 +15,15 @@ import {
   runTransaction
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-database.js";
 
-import {
-  ref as storageRef,
-  uploadBytes,
-  getDownloadURL
-} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-storage.js";
-
-import { auth, authReady, db, storage } from "./firebase.js";
+import { auth, authReady, db } from "./firebase.js";
 
 const $ = id => document.getElementById(id);
 
 const MAX_PLAYERS = 12;
 const MIN_PLAYERS = 5;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_COMPRESSED_LENGTH = 35000;
+
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
@@ -103,10 +99,90 @@ function validateImage(file) {
   }
 
   if (file.size > MAX_IMAGE_SIZE) {
-    throw new Error("Your image must be 5 MB or smaller.");
+    throw new Error("Your original image must be 5 MB or smaller.");
   }
 
   return true;
+}
+
+// Compress the selected image in the browser.
+// No Firebase Storage or external image hosting is used.
+async function uploadAvatar(file) {
+  validateImage(file);
+
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    const image = new Image();
+    image.src = objectUrl;
+
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(
+        new Error("This picture couldn't be opened. Try another image.")
+      );
+    });
+
+    const sourceWidth = image.naturalWidth;
+    const sourceHeight = image.naturalHeight;
+
+    if (!sourceWidth || !sourceHeight) {
+      throw new Error("This picture appears to be invalid.");
+    }
+
+    // Crop to a centred square so profile pictures display consistently.
+    const cropSize = Math.min(sourceWidth, sourceHeight);
+    const sourceX = (sourceWidth - cropSize) / 2;
+    const sourceY = (sourceHeight - cropSize) / 2;
+
+    // Try a few small sizes and quality levels to keep database usage low.
+    const attempts = [
+      { size: 128, quality: 0.68 },
+      { size: 128, quality: 0.58 },
+      { size: 112, quality: 0.55 },
+      { size: 96, quality: 0.50 }
+    ];
+
+    for (const attempt of attempts) {
+      const canvas = document.createElement("canvas");
+      canvas.width = attempt.size;
+      canvas.height = attempt.size;
+
+      const context = canvas.getContext("2d");
+
+      if (!context) {
+        throw new Error("Your browser couldn't process the picture.");
+      }
+
+      // JPEG has no transparency, so transparent areas become white.
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, attempt.size, attempt.size);
+
+      context.drawImage(
+        image,
+        sourceX,
+        sourceY,
+        cropSize,
+        cropSize,
+        0,
+        0,
+        attempt.size,
+        attempt.size
+      );
+
+      const dataUrl = canvas.toDataURL("image/jpeg", attempt.quality);
+
+      if (dataUrl.length <= MAX_COMPRESSED_LENGTH) {
+        return dataUrl;
+      }
+    }
+
+    throw new Error(
+      "This picture couldn't be compressed enough. Please try a simpler picture."
+    );
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 }
 
 function showPhotoPreview(containerId, fileOrUrl) {
@@ -163,62 +239,12 @@ function showAvatar(container, photoUrl) {
     return;
   }
 
-  // Fallback for older profiles made before photo uploads were added.
   const fallback = document.createElement("span");
   fallback.className = "photo-placeholder";
   fallback.textContent = "👤";
   container.appendChild(fallback);
 }
 
-function wirePhotoInputs(fileInputId, cameraInputId, previewId, onSelect) {
-  const fileInput = $(fileInputId);
-  const cameraInput = $(cameraInputId);
-
-  function handleFile(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      validateImage(file);
-      onSelect(file);
-      showPhotoPreview(previewId, file);
-    } catch (error) {
-      event.target.value = "";
-      setMessage(
-        previewId === "register-avatar-preview" ? "auth-message" : "home-message",
-        error.message,
-        "error"
-      );
-    }
-  }
-
-  fileInput.addEventListener("change", handleFile);
-  cameraInput.addEventListener("change", handleFile);
-}
-
-wirePhotoInputs(
-  "register-avatar-file",
-  "register-camera-file",
-  "register-avatar-preview",
-  file => {
-    selectedRegisterFile = file;
-    $("register-camera-file").value = "";
-    $("register-avatar-file").value = "";
-  }
-);
-
-wirePhotoInputs(
-  "profile-avatar-file",
-  "profile-camera-file",
-  "profile-avatar-preview",
-  file => {
-    selectedProfileFile = file;
-    $("profile-camera-file").value = "";
-    $("profile-avatar-file").value = "";
-  }
-);
-
-// Keep the selected file in memory while allowing the same file to be picked again.
 function connectPhotoPicker(fileInputId, cameraInputId, previewId, onSelect) {
   [fileInputId, cameraInputId].forEach(id => {
     $(id).addEventListener("change", event => {
@@ -231,36 +257,36 @@ function connectPhotoPicker(fileInputId, cameraInputId, previewId, onSelect) {
         showPhotoPreview(previewId, file);
       } catch (error) {
         setMessage(
-          previewId === "register-avatar-preview" ? "auth-message" : "home-message",
+          previewId === "register-avatar-preview"
+            ? "auth-message"
+            : "home-message",
           error.message,
           "error"
         );
       }
 
+      // Clearing the input allows the same file to be selected again.
       event.target.value = "";
     });
   });
 }
 
-// Remove the basic listeners above and use the picker handlers that preserve
-// the selected file and allow the same image to be selected again.
-$("register-avatar-file").replaceWith($("register-avatar-file").cloneNode(true));
-$("register-camera-file").replaceWith($("register-camera-file").cloneNode(true));
-$("profile-avatar-file").replaceWith($("profile-avatar-file").cloneNode(true));
-$("profile-camera-file").replaceWith($("profile-camera-file").cloneNode(true));
-
 connectPhotoPicker(
   "register-avatar-file",
   "register-camera-file",
   "register-avatar-preview",
-  file => { selectedRegisterFile = file; }
+  file => {
+    selectedRegisterFile = file;
+  }
 );
 
 connectPhotoPicker(
   "profile-avatar-file",
   "profile-camera-file",
   "profile-avatar-preview",
-  file => { selectedProfileFile = file; }
+  file => {
+    selectedProfileFile = file;
+  }
 );
 
 function validProfile(name, profile) {
@@ -270,28 +296,6 @@ function validProfile(name, profile) {
     profile &&
     (typeof profile.avatarUrl === "string" ||
       typeof profile.avatar === "string");
-}
-
-async function uploadAvatar(file) {
-  validateImage(file);
-
-  const safeExtension = ({
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/gif": "gif",
-    "image/webp": "webp"
-  })[file.type];
-
-  const imageRef = storageRef(
-    storage,
-    `avatars/${currentUser.uid}/profile.${safeExtension}`
-  );
-
-  await uploadBytes(imageRef, file, {
-    contentType: file.type
-  });
-
-  return await getDownloadURL(imageRef);
 }
 
 async function updateRoomPlayerProfile(profile) {
@@ -371,7 +375,9 @@ async function loadProfile(user) {
   const profile = snapshot.val();
 
   if (!validProfile(profile.displayName, profile)) {
-    throw new Error("Your saved profile is incomplete. Please contact the site owner.");
+    throw new Error(
+      "Your saved profile is incomplete. Please contact the site owner."
+    );
   }
 
   currentProfile = profile;
@@ -413,7 +419,11 @@ $("register-form").addEventListener("submit", async event => {
   }
 
   if (!selectedRegisterFile) {
-    setMessage("auth-message", "Please choose or take a profile picture.", "error");
+    setMessage(
+      "auth-message",
+      "Please choose or take a profile picture.",
+      "error"
+    );
     return;
   }
 
@@ -429,7 +439,12 @@ $("register-form").addEventListener("submit", async event => {
   try {
     await authReady;
 
-    const credential = await createUserWithEmailAndPassword(auth, email, password);
+    const credential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+
     currentUser = credential.user;
 
     const avatarUrl = await uploadAvatar(selectedRegisterFile);
@@ -444,7 +459,7 @@ $("register-form").addEventListener("submit", async event => {
 
     selectedRegisterFile = null;
     $("register-form").reset();
-    showAvatar($("home-avatar"), avatarUrl);
+
     renderHomeProfile();
     showScreen("home-screen");
     setMessage("home-message", "Your account is ready!", "success");
@@ -463,6 +478,7 @@ $("login-form").addEventListener("submit", async event => {
 
   try {
     await authReady;
+
     await signInWithEmailAndPassword(
       auth,
       $("login-email").value.trim(),
@@ -477,15 +493,20 @@ $("login-form").addEventListener("submit", async event => {
 
 function friendlyError(error) {
   const messages = {
-    "auth/invalid-credential": "Your email or password is incorrect.",
-    "auth/email-already-in-use": "An account already uses that email.",
-    "auth/invalid-email": "Enter a valid email address.",
-    "auth/weak-password": "Your password must be at least 6 characters.",
-    "auth/too-many-requests": "Too many attempts. Please wait a while and try again.",
-    "auth/network-request-failed": "Network error. Check your internet connection.",
-    "storage/unauthorized": "Firebase Storage denied the upload. Check your Storage rules.",
-    "storage/unknown": "The picture could not be uploaded. Check your Storage setup and try again.",
-    "PERMISSION_DENIED": "Firebase denied access. Check your database security rules."
+    "auth/invalid-credential":
+      "Your email or password is incorrect.",
+    "auth/email-already-in-use":
+      "An account already uses that email.",
+    "auth/invalid-email":
+      "Enter a valid email address.",
+    "auth/weak-password":
+      "Your password must be at least 6 characters.",
+    "auth/too-many-requests":
+      "Too many attempts. Please wait a while and try again.",
+    "auth/network-request-failed":
+      "Network error. Check your internet connection.",
+    "PERMISSION_DENIED":
+      "Firebase denied access. Check your database security rules."
   };
 
   return messages[error.code] || error.message || "Something went wrong.";
@@ -526,7 +547,9 @@ async function createRoom() {
       }
     }
 
-    throw new Error("Couldn't find an available room code. Please try again.");
+    throw new Error(
+      "Couldn't find an available room code. Please try again."
+    );
   } catch (error) {
     setMessage("home-message", friendlyError(error), "error");
   } finally {
@@ -566,7 +589,10 @@ $("join-form").addEventListener("submit", async event => {
 
     const players = room.players || {};
 
-    if (!players[currentUser.uid] && Object.keys(players).length >= MAX_PLAYERS) {
+    if (
+      !players[currentUser.uid] &&
+      Object.keys(players).length >= MAX_PLAYERS
+    ) {
       throw new Error("That room is full.");
     }
 
@@ -704,7 +730,8 @@ async function leaveRoom() {
 
   try {
     if (room?.hostUid === uid) {
-      const otherPlayers = Object.keys(room.players || {}).filter(id => id !== uid);
+      const otherPlayers = Object.keys(room.players || {})
+        .filter(id => id !== uid);
 
       if (otherPlayers.length === 0) {
         await remove(ref(db, `rooms/${code}`));
@@ -712,6 +739,7 @@ async function leaveRoom() {
         await update(ref(db, `rooms/${code}`), {
           hostUid: otherPlayers[0]
         });
+
         await remove(ref(db, `rooms/${code}/players/${uid}`));
       }
     } else {
@@ -755,10 +783,12 @@ $("profile-form").addEventListener("submit", async event => {
 
   try {
     await saveProfile($("profile-name").value, selectedProfileFile);
+
     selectedProfileFile = null;
     $("profile-avatar-file").value = "";
     $("profile-camera-file").value = "";
     $("profile-editor").hidden = true;
+
     setMessage("home-message", "Profile updated!", "success");
   } catch (error) {
     setMessage("home-message", friendlyError(error), "error");
