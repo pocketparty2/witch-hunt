@@ -1725,3 +1725,663 @@ onAuthStateChanged(auth, async user => {
     setConnection("Connection error");
   }
 });
+// ============================================================
+// WITCH HUNT — COMPLETE GAMEPLAY ENGINE
+// ============================================================
+
+const WH_GAME_MAX_REJECTIONS = 5;
+
+function whPlayers() {
+  const raw = currentRoom?.players || {};
+
+  if (Array.isArray(raw)) {
+    return raw
+      .filter(Boolean)
+      .map((p, i) => ({
+        uid: p.uid || p.id || String(i),
+        name: p.name || p.displayName || "Player",
+        ...p
+      }));
+  }
+
+  return Object.entries(raw)
+    .filter(([, p]) => p && typeof p === "object")
+    .map(([uid, p]) => ({
+      uid,
+      name: p.name || p.displayName || "Player",
+      ...p,
+      uid
+    }));
+}
+
+function whPlayerName(uid) {
+  return whPlayers().find(p => p.uid === uid)?.name || "Player";
+}
+
+function whIsHost() {
+  return Boolean(
+    currentUser &&
+    currentRoom &&
+    (
+      currentRoom.hostUid === currentUser.uid ||
+      currentRoom.host === currentUser.uid ||
+      currentRoom.hostId === currentUser.uid
+    )
+  );
+}
+
+function whIsWitch() {
+  return currentSecret?.role === "witch";
+}
+
+function whIsOracle() {
+  return currentSecret?.role === "oracle";
+}
+
+function whIsTown() {
+  return currentSecret?.role === "townsperson";
+}
+
+function whMissionRef() {
+  return ref(db, `rooms/${currentRoomCode}/mission`);
+}
+
+function whRoomRef() {
+  return ref(db, `rooms/${currentRoomCode}`);
+}
+
+function whEscape(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[char]);
+}
+
+function whButton(id, text, disabled = false, secondary = false) {
+  return `
+    <button
+      id="${id}"
+      type="button"
+      ${disabled ? "disabled" : ""}
+      class="${secondary ? "secondary-button" : ""}"
+    >${whEscape(text)}</button>
+  `;
+}
+
+function whBind(id, callback) {
+  document.getElementById(id)?.addEventListener("click", callback);
+}
+
+function whMessage(text, error = false) {
+  const target = document.getElementById("mission-message");
+  if (!target) return;
+
+  target.textContent = text;
+  target.style.color = error ? "#ff9cae" : "";
+}
+
+async function whUpdateMission(callback) {
+  if (!currentRoomCode || !currentUser) return;
+
+  const result = await runTransaction(whMissionRef(), mission => {
+    if (!mission) return;
+
+    return callback(mission);
+  });
+
+  if (!result.committed) {
+    throw new Error("The game state changed. Please try again.");
+  }
+
+  return result.snapshot.val();
+}
+
+function whGetTeamSize(round, playerCount) {
+  const sizes = {
+    5: [2, 3, 2, 3, 3],
+    6: [2, 3, 4, 3, 4],
+    7: [2, 3, 3, 4, 4],
+    8: [3, 4, 4, 5, 5],
+    9: [3, 4, 4, 5, 5],
+    10: [3, 4, 4, 5, 5],
+    11: [3, 4, 4, 5, 6],
+    12: [3, 4, 5, 6, 6]
+  };
+
+  const schedule = sizes[playerCount] || sizes[5];
+  return schedule[Math.min(round - 1, 4)];
+}
+
+function whGetLeaderUid(mission, players) {
+  const previous = players.findIndex(p => p.uid === mission.leaderUid);
+  const next = (previous + 1 + players.length) % players.length;
+  return players[next]?.uid || players[0]?.uid;
+}
+
+function whMajority(votes, players) {
+  const yes = players.filter(p => votes?.[p.uid] === "approve").length;
+  const no = players.filter(p => votes?.[p.uid] === "reject").length;
+
+  return {
+    yes,
+    no,
+    approved: yes > no
+  };
+}
+
+function whResultSummary(mission) {
+  const result = mission.result;
+  if (!result) return "";
+
+  return `
+    <div class="wh-result">
+      <h3>${result.success ? "Mission succeeded" : "Mission failed"}</h3>
+      <p>${result.success
+        ? "The team completed the mission."
+        : "The witches sabotaged the mission."
+      }</p>
+      <p>Town: <strong>${mission.townPoints || 0}/3</strong></p>
+      <p>Witches: <strong>${mission.witchPoints || 0}/3</strong></p>
+    </div>
+  `;
+}
+
+// Replace the previous renderer with the full gameplay renderer.
+function renderMission() {
+  const panel = document.getElementById("mission-panel");
+  const content = document.getElementById("mission-content");
+  const roundLabel = document.getElementById("mission-round");
+  const phaseLabel = document.getElementById("mission-phase");
+
+  if (!panel || !content || !currentRoom || !currentUser) return;
+
+  const mission = currentRoom.mission;
+
+  if (!mission) {
+    content.innerHTML = "<p>Waiting for the host to start the game.</p>";
+    return;
+  }
+
+  const players = whPlayers();
+  const myUid = currentUser.uid;
+  const isHost = whIsHost();
+  const team = Array.isArray(mission.proposal?.teamUids)
+    ? mission.proposal.teamUids
+    : [];
+
+  const approvalVotes = mission.approvalVotes || {};
+  const missionVotes = mission.missionVotes || {};
+  const alreadyApproved = Object.prototype.hasOwnProperty.call(
+    approvalVotes, myUid
+  );
+  const alreadyVotedMission = Object.prototype.hasOwnProperty.call(
+    missionVotes, myUid
+  );
+
+  roundLabel && (roundLabel.textContent =
+    mission.round ? `Round ${mission.round} of 5` : "Game");
+
+  phaseLabel && (phaseLabel.textContent =
+    String(mission.phase || "proposal").replace(/-/g, " "));
+
+  let html = `
+    <div class="wh-scoreboard">
+      <div><span>Town</span><strong>${mission.townPoints || 0}/3</strong></div>
+      <div><span>Witches</span><strong>${mission.witchPoints || 0}/3</strong></div>
+    </div>
+    <p>Team leader: <strong>${whEscape(whPlayerName(mission.leaderUid))}</strong></p>
+  `;
+
+  if (mission.phase === "proposal") {
+    const isLeader = mission.leaderUid === myUid;
+
+    html += `
+      <h3>Choose the mission team</h3>
+      <p>Select ${mission.teamSize} player(s) for this mission.</p>
+    `;
+
+    if (isLeader) {
+      html += `
+        <div class="wh-player-list">
+          ${players.map(p => `
+            <label class="wh-player-option">
+              <input
+                type="checkbox"
+                name="wh-team-player"
+                value="${whEscape(p.uid)}"
+                ${team.includes(p.uid) ? "checked" : ""}
+              >
+              <span>${whEscape(p.name)}</span>
+            </label>
+          `).join("")}
+        </div>
+        ${whButton("wh-submit-team", "Propose team")}
+      `;
+    } else {
+      html += `<p>Waiting for the leader to propose a team.</p>`;
+    }
+
+    if ((mission.rejectionCount || 0) > 0) {
+      html += `<p>Rejected teams: ${mission.rejectionCount}/${WH_GAME_MAX_REJECTIONS}</p>`;
+    }
+  }
+
+  else if (mission.phase === "pending") {
+    html += `
+      <h3>Vote on the proposed team</h3>
+      <p>Everyone must vote. The result stays hidden until all players have voted.</p>
+      <div class="wh-team-list">
+        ${team.map(uid => `<span>${whEscape(whPlayerName(uid))}</span>`).join("")}
+      </div>
+      <p>Votes submitted: ${players.filter(p =>
+        Object.prototype.hasOwnProperty.call(approvalVotes, p.uid)
+      ).length}/${players.length}</p>
+    `;
+
+    if (!alreadyApproved) {
+      html += `
+        <div class="wh-actions">
+          ${whButton("wh-approve-team", "Approve team")}
+          ${whButton("wh-reject-team", "Reject team", false, true)}
+        </div>
+      `;
+    } else {
+      html += `<p>Your vote has been recorded.</p>`;
+    }
+  }
+
+  else if (mission.phase === "accepted") {
+    html += `
+      <h3>Team approved</h3>
+      <p>The team will now secretly decide whether the mission succeeds or fails.</p>
+      <div class="wh-team-list">
+        ${team.map(uid => `<span>${whEscape(whPlayerName(uid))}</span>`).join("")}
+      </div>
+      <p>Approval: ${mission.approvalResult?.yes ?? 0} approve,
+      ${mission.approvalResult?.no ?? 0} reject.</p>
+    `;
+
+    if (!team.includes(myUid)) {
+      html += `<p>You are not on this mission team. Waiting for the team to vote.</p>`;
+    } else if (alreadyVotedMission) {
+      html += `<p>Your secret mission decision has been recorded.</p>`;
+    } else if (whIsWitch()) {
+      html += `
+        <h3>Choose your secret decision</h3>
+        <p>As a witch, you may help the mission succeed or sabotage it.</p>
+        <div class="wh-actions">
+          ${whButton("wh-mission-succeed", "Succeed")}
+          ${whButton("wh-mission-ruin", "Ruin mission", false, true)}
+        </div>
+      `;
+    } else {
+      html += `
+        <h3>Your secret decision</h3>
+        <p>You must choose Succeed.</p>
+        ${whButton("wh-mission-succeed", "Succeed")}
+      `;
+    }
+
+    html += `
+      <p>Mission votes submitted: ${team.filter(uid =>
+        Object.prototype.hasOwnProperty.call(missionVotes, uid)
+      ).length}/${team.length}</p>
+    `;
+  }
+
+  else if (mission.phase === "results" || mission.phase === "oracle-guess") {
+    html += whResultSummary(mission);
+
+    if (mission.phase === "oracle-guess") {
+      html += `
+        <h3>Final round: identify the Oracle</h3>
+        <p>The town has completed three successful missions. The witches get one chance to identify the Oracle.</p>
+      `;
+
+      if (whIsWitch()) {
+        html += `
+          <label for="wh-oracle-guess">Who do you think the Oracle is?</label>
+          <select id="wh-oracle-guess">
+            <option value="">Choose a player</option>
+            ${players.filter(p => p.uid !== myUid).map(p => `
+              <option value="${whEscape(p.uid)}">${whEscape(p.name)}</option>
+            `).join("")}
+          </select>
+          ${whButton("wh-submit-oracle-guess", "Submit guess")}
+        `;
+      } else if (whIsOracle()) {
+        html += `<p>The witches are making their final guess.</p>`;
+      } else {
+        html += `<p>Waiting for the witches' final guess.</p>`;
+      }
+
+      if (mission.oracleGuessUid) {
+        html += `
+          <p>The witches have submitted their guess. The Oracle must resolve the final result.</p>
+        `;
+
+        if (whIsOracle()) {
+          html += `
+            ${whButton("wh-oracle-guess-correct", "They guessed correctly")}
+            ${whButton("wh-oracle-guess-wrong", "They guessed incorrectly", false, true)}
+          `;
+        }
+      }
+    } else if (isHost) {
+      html += whButton(
+        "wh-next-round",
+        mission.round >= 5 ? "Finish game" : "Start next round"
+      );
+    } else {
+      html += `<p>Waiting for the host to continue.</p>`;
+    }
+  }
+
+  else if (mission.phase === "finished") {
+    const winner = mission.winner === "town" ? "The Town" : "The Witches";
+
+    html += `
+      <div class="wh-result">
+        <h2>${whEscape(winner)} win!</h2>
+        <p>Final score: Town ${mission.townPoints || 0},
+        Witches ${mission.witchPoints || 0}.</p>
+      </div>
+      <p>The game is over.</p>
+    `;
+  }
+
+  else {
+    html += `<p>Waiting for the next game action.</p>`;
+  }
+
+  content.innerHTML = html;
+
+  whBind("wh-submit-team", whSubmitTeam);
+  whBind("wh-approve-team", () => whCastApproval("approve"));
+  whBind("wh-reject-team", () => whCastApproval("reject"));
+  whBind("wh-mission-succeed", () => whCastMissionVote("succeed"));
+  whBind("wh-mission-ruin", () => whCastMissionVote("ruin"));
+  whBind("wh-next-round", whNextRound);
+  whBind("wh-submit-oracle-guess", whSubmitOracleGuess);
+  whBind("wh-oracle-guess-correct", () => whResolveOracleGuess(true));
+  whBind("wh-oracle-guess-wrong", () => whResolveOracleGuess(false));
+}
+
+async function whSubmitTeam() {
+  const selected = Array.from(
+    document.querySelectorAll('input[name="wh-team-player"]:checked')
+  ).map(input => input.value);
+
+  const mission = currentRoom?.mission;
+  const players = whPlayers();
+
+  if (!mission || mission.leaderUid !== currentUser?.uid) {
+    return whMessage("Only the current leader can propose a team.", true);
+  }
+
+  if (selected.length !== Number(mission.teamSize)) {
+    return whMessage(`Choose exactly ${mission.teamSize} players.`, true);
+  }
+
+  if (new Set(selected).size !== selected.length ||
+      selected.some(uid => !players.some(p => p.uid === uid))) {
+    return whMessage("That team selection is invalid.", true);
+  }
+
+  try {
+    await whUpdateMission(m => {
+      if (m.phase !== "proposal" || m.leaderUid !== currentUser.uid) {
+        return;
+      }
+
+      m.proposal = {
+        teamUids: selected,
+        leaderUid: currentUser.uid,
+        createdAt: Date.now()
+      };
+      m.approvalVotes = {};
+      m.missionVotes = {};
+      m.approvalResult = null;
+      m.result = null;
+      m.phase = "pending";
+
+      return m;
+    });
+  } catch (error) {
+    whMessage(error.message || "Couldn't submit the team.", true);
+  }
+}
+
+async function whCastApproval(vote) {
+  const players = whPlayers();
+  const myUid = currentUser?.uid;
+
+  if (!myUid || !["approve", "reject"].includes(vote)) return;
+
+  try {
+    await whUpdateMission(m => {
+      if (m.phase !== "pending") return;
+
+      m.approvalVotes ||= {};
+
+      if (Object.prototype.hasOwnProperty.call(m.approvalVotes, myUid)) {
+        return;
+      }
+
+      m.approvalVotes[myUid] = vote;
+
+      const everyoneVoted = players.every(p =>
+        Object.prototype.hasOwnProperty.call(m.approvalVotes, p.uid)
+      );
+
+      if (!everyoneVoted) return m;
+
+      const tally = whMajority(m.approvalVotes, players);
+
+      m.approvalResult = {
+        yes: tally.yes,
+        no: tally.no,
+        approved: tally.approved,
+        completedAt: Date.now()
+      };
+
+      if (tally.approved) {
+        m.phase = "accepted";
+        m.missionVotes = {};
+      } else {
+        const rejections = (m.rejectionCount || 0) + 1;
+        m.rejectionCount = rejections;
+
+        if (rejections >= WH_GAME_MAX_REJECTIONS) {
+          m.phase = "finished";
+          m.winner = "witches";
+          m.finishReason = "Five consecutive teams were rejected.";
+          return m;
+        }
+
+        m.leaderUid = whGetLeaderUid(m, players);
+        m.phase = "proposal";
+        m.proposal = null;
+        m.approvalVotes = {};
+        m.missionVotes = {};
+      }
+
+      return m;
+    });
+  } catch (error) {
+    whMessage(error.message || "Couldn't record your vote.", true);
+  }
+}
+
+async function whCastMissionVote(vote) {
+  const myUid = currentUser?.uid;
+  const players = whPlayers();
+
+  if (!myUid || !["succeed", "ruin"].includes(vote)) return;
+
+  try {
+    await whUpdateMission(m => {
+      if (m.phase !== "accepted") return m;
+
+      const team = m.proposal?.teamUids || [];
+
+      if (!team.includes(myUid)) return m;
+      if (m.missionVotes?.[myUid]) return m;
+
+      // Only witches may sabotage a mission.
+      if (vote === "ruin" && !whIsWitch()) return m;
+
+      m.missionVotes ||= {};
+      m.missionVotes[myUid] = vote;
+
+      const allVoted = team.every(uid =>
+        Object.prototype.hasOwnProperty.call(m.missionVotes, uid)
+      );
+
+      if (!allVoted) return m;
+
+      const ruinCount = team.filter(uid =>
+        m.missionVotes[uid] === "ruin"
+      ).length;
+
+      // In a 7+ player game, mission four requires two sabotages.
+      const ruinThreshold =
+        m.round === 4 && players.length >= 7 ? 2 : 1;
+
+      const success = ruinCount < ruinThreshold;
+
+      m.townPoints = Number(m.townPoints || 0) + (success ? 1 : 0);
+      m.witchPoints = Number(m.witchPoints || 0) + (success ? 0 : 1);
+
+      m.result = {
+        success,
+        completedAt: Date.now()
+      };
+
+      if (m.townPoints >= 3) {
+        m.phase = "oracle-guess";
+        m.oracleGuessUid = null;
+      } else if (m.witchPoints >= 3) {
+        m.phase = "finished";
+        m.winner = "witches";
+        m.finishReason = "The witches sabotaged three missions.";
+      } else if (Number(m.round) >= 5) {
+        m.phase = "finished";
+        m.winner = m.townPoints > m.witchPoints ? "town" : "witches";
+        m.finishReason = "All five missions have been played.";
+      } else {
+        m.phase = "results";
+      }
+
+      return m;
+    });
+  } catch (error) {
+    whMessage(error.message || "Couldn't record your mission vote.", true);
+  }
+}
+
+async function whNextRound() {
+  if (!whIsHost()) {
+    return whMessage("Only the host can start the next round.", true);
+  }
+
+  const players = whPlayers();
+
+  try {
+    await whUpdateMission(m => {
+      if (m.phase !== "results") return m;
+
+      const nextRound = Number(m.round || 1) + 1;
+
+      if (nextRound > 5) {
+        m.phase = "finished";
+        m.winner =
+          Number(m.townPoints || 0) > Number(m.witchPoints || 0)
+            ? "town"
+            : "witches";
+        return m;
+      }
+
+      m.round = nextRound;
+      m.teamSize = whGetTeamSize(nextRound, players.length);
+      m.leaderUid = whGetLeaderUid(m, players);
+      m.rejectionCount = 0;
+      m.proposal = null;
+      m.approvalVotes = {};
+      m.approvalResult = null;
+      m.missionVotes = {};
+      m.result = null;
+      m.phase = "proposal";
+
+      return m;
+    });
+  } catch (error) {
+    whMessage(error.message || "Couldn't start the next round.", true);
+  }
+}
+
+async function whSubmitOracleGuess() {
+  const select = document.getElementById("wh-oracle-guess");
+  const guessUid = select?.value;
+
+  if (!whIsWitch()) {
+    return whMessage("Only a witch can submit the final guess.", true);
+  }
+
+  if (!guessUid) {
+    return whMessage("Choose a player first.", true);
+  }
+
+  try {
+    await whUpdateMission(m => {
+      if (m.phase !== "oracle-guess" || m.oracleGuessUid) return m;
+
+      m.oracleGuessUid = guessUid;
+      m.oracleGuessSubmittedAt = Date.now();
+
+      return m;
+    });
+  } catch (error) {
+    whMessage(error.message || "Couldn't submit the guess.", true);
+  }
+}
+
+async function whResolveOracleGuess(correct) {
+  if (!whIsOracle()) {
+    return whMessage("Only the Oracle can resolve the final guess.", true);
+  }
+
+  try {
+    await whUpdateMission(m => {
+      if (m.phase !== "oracle-guess" || !m.oracleGuessUid) return m;
+
+      m.phase = "finished";
+      m.winner = correct ? "witches" : "town";
+      m.finishReason = correct
+        ? "The witches identified the Oracle."
+        : "The witches failed to identify the Oracle.";
+
+      return m;
+    });
+  } catch (error) {
+    whMessage(error.message || "Couldn't finish the game.", true);
+  }
+}
+
+// Ensure the existing page renderer uses the new mission UI.
+const whOriginalRenderGamePage = renderGamePage;
+
+renderGamePage = function (...args) {
+  whOriginalRenderGamePage.apply(this, args);
+
+  const mission = currentRoom?.mission;
+  const panel = document.getElementById("mission-panel");
+
+  if (panel && mission && currentRoom?.status === "playing") {
+    panel.style.display = "";
+    renderMission();
+  }
+};
