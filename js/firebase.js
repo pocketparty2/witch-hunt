@@ -5,7 +5,7 @@ import { getDatabase } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-
 const firebaseConfig = {
   apiKey: "AIzaSyDnDxTwg6mBoUjHiSsXdkQyYs9kkhVAVdU",
   authDomain: "witch-hunt-5bd40.firebaseapp.com",
-  databaseURL: "https://console.firebase.google.com/u/0/project/witch-hunt-5bd40/database/witch-hunt-5bd40-default-rtdb/data/~2F",
+  databaseURL: "https://witch-hunt-5bd40-default-rtdb.europe-west1.firebasedatabase.app/",
   projectId: "witch-hunt-5bd40",
   storageBucket: "witch-hunt-5bd40.firebasestorage.app",
   messagingSenderId: "763008278485",
