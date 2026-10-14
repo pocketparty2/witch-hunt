@@ -39,6 +39,30 @@ let selectedRegisterFile = null;
 let selectedProfileFile = null;
 let stopRoomListener = null;
 let busy = false;
+let profileSetupMode = false;
+let authStateVersion = 0;
+
+const registerSubmitButton = $("register-form")
+  .querySelector("button[type='submit']");
+
+const originalRegisterButtonText =
+  registerSubmitButton?.textContent || "Create account";
+
+function setProfileSetupMode(enabled) {
+  profileSetupMode = enabled;
+
+  $("register-email").disabled = enabled;
+  $("register-password").disabled = enabled;
+
+  $("register-email").required = !enabled;
+  $("register-password").required = !enabled;
+
+  if (registerSubmitButton) {
+    registerSubmitButton.textContent = enabled
+      ? "Finish profile setup"
+      : originalRegisterButtonText;
+  }
+}
 
 function showScreen(screenId) {
   ["auth-screen", "home-screen", "lobby-screen", "game-screen"].forEach(id => {
@@ -68,6 +92,10 @@ function setBusy(value) {
   ).forEach(button => {
     button.disabled = value;
   });
+
+  if (!value && currentRoom) {
+    renderLobby();
+  }
 }
 
 function cleanName(value) {
@@ -105,7 +133,7 @@ function validateImage(file) {
   return true;
 }
 
-// Compress the selected image in the browser.
+// Compress the selected picture in the browser.
 // No Firebase Storage or external image hosting is used.
 async function uploadAvatar(file) {
   validateImage(file);
@@ -130,12 +158,10 @@ async function uploadAvatar(file) {
       throw new Error("This picture appears to be invalid.");
     }
 
-    // Crop to a centred square so profile pictures display consistently.
     const cropSize = Math.min(sourceWidth, sourceHeight);
     const sourceX = (sourceWidth - cropSize) / 2;
     const sourceY = (sourceHeight - cropSize) / 2;
 
-    // Try a few small sizes and quality levels to keep database usage low.
     const attempts = [
       { size: 128, quality: 0.68 },
       { size: 128, quality: 0.58 },
@@ -154,7 +180,6 @@ async function uploadAvatar(file) {
         throw new Error("Your browser couldn't process the picture.");
       }
 
-      // JPEG has no transparency, so transparent areas become white.
       context.fillStyle = "#ffffff";
       context.fillRect(0, 0, attempt.size, attempt.size);
 
@@ -255,6 +280,11 @@ function connectPhotoPicker(fileInputId, cameraInputId, previewId, onSelect) {
         validateImage(file);
         onSelect(file);
         showPhotoPreview(previewId, file);
+        setMessage(
+          previewId === "register-avatar-preview"
+            ? "auth-message"
+            : "home-message"
+        );
       } catch (error) {
         setMessage(
           previewId === "register-avatar-preview"
@@ -265,7 +295,6 @@ function connectPhotoPicker(fileInputId, cameraInputId, previewId, onSelect) {
         );
       }
 
-      // Clearing the input allows the same file to be selected again.
       event.target.value = "";
     });
   });
@@ -290,12 +319,13 @@ connectPhotoPicker(
 );
 
 function validProfile(name, profile) {
+  const avatarUrl = profile?.avatarUrl || profile?.avatar;
+
   return typeof name === "string" &&
     name.trim().length >= 1 &&
     name.trim().length <= 20 &&
-    profile &&
-    (typeof profile.avatarUrl === "string" ||
-      typeof profile.avatar === "string");
+    typeof avatarUrl === "string" &&
+    avatarUrl.length > 0;
 }
 
 async function updateRoomPlayerProfile(profile) {
@@ -305,19 +335,24 @@ async function updateRoomPlayerProfile(profile) {
     ref(db, `rooms/${currentRoomCode}/players/${currentUser.uid}`),
     {
       displayName: profile.displayName,
-      avatarUrl: profile.avatarUrl || null
+      avatarUrl: profile.avatarUrl || profile.avatar || null
     }
   );
 }
 
 async function saveProfile(name, file = null) {
+  if (!currentUser) {
+    throw new Error("You must be logged in to save your profile.");
+  }
+
   const clean = cleanName(name);
 
-  if (!clean || clean.length > 20) {
+  if (!clean) {
     throw new Error("Your player name must be 1–20 characters.");
   }
 
-  let avatarUrl = currentProfile?.avatarUrl || null;
+  let avatarUrl =
+    currentProfile?.avatarUrl || currentProfile?.avatar || null;
 
   if (file) {
     avatarUrl = await uploadAvatar(file);
@@ -344,13 +379,18 @@ function renderHomeProfile() {
   if (!currentProfile) return;
 
   $("home-name").textContent = currentProfile.displayName || "Player";
-  showAvatar($("home-avatar"), currentProfile.avatarUrl || null);
+
+  showAvatar(
+    $("home-avatar"),
+    currentProfile.avatarUrl || currentProfile.avatar || null
+  );
+
   $("profile-name").value = currentProfile.displayName || "";
 
   if (!selectedProfileFile) {
     showPhotoPreview(
       "profile-avatar-preview",
-      currentProfile.avatarUrl || null
+      currentProfile.avatarUrl || currentProfile.avatar || null
     );
   }
 }
@@ -358,17 +398,37 @@ function renderHomeProfile() {
 async function loadProfile(user) {
   const snapshot = await get(ref(db, `users/${user.uid}`));
 
+  // The account exists in Authentication but may not have a profile
+  // because the first attempt to save it was denied by the database.
   if (!snapshot.exists()) {
     currentProfile = null;
-    showScreen("auth-screen");
+    setProfileSetupMode(true);
+
+    $("register-form").reset();
+    $("register-email").value = user.email || "";
+    $("register-email").disabled = true;
+    $("register-password").value = "";
+    $("register-password").disabled = true;
+
+    selectedRegisterFile = null;
+    showPhotoPreview("register-avatar-preview", null);
+
     $("login-form").hidden = true;
     $("register-form").hidden = false;
-    $("show-login").hidden = true;
-    $("show-register").hidden = true;
+    $("show-login").hidden = false;
+    $("show-register").hidden = false;
+
+    $("show-login").classList.remove("active");
+    $("show-register").classList.add("active");
+
+    showScreen("auth-screen");
+
     setMessage(
       "auth-message",
-      "Your account has no saved profile yet. Choose a name and picture, then contact the site owner if you cannot finish setup."
+      "Your account already exists, but its profile hasn't been saved. Choose a player name and picture to finish setting it up."
     );
+
+    setConnection("Profile setup required");
     return;
   }
 
@@ -376,10 +436,16 @@ async function loadProfile(user) {
 
   if (!validProfile(profile.displayName, profile)) {
     throw new Error(
-      "Your saved profile is incomplete. Please contact the site owner."
+      "Your saved profile is incomplete. Please choose a profile picture and finish setting up your profile."
     );
   }
 
+  // Migrate an older profile field if necessary.
+  if (!profile.avatarUrl && profile.avatar) {
+    profile.avatarUrl = profile.avatar;
+  }
+
+  setProfileSetupMode(false);
   currentProfile = profile;
 
   $("login-form").hidden = false;
@@ -392,21 +458,44 @@ async function loadProfile(user) {
   setConnection("Connected");
 }
 
-function switchAuthTab(register) {
+async function switchAuthTab(register) {
+  if (busy) return;
+
+  // An incomplete signed-in account must be signed out before the
+  // user can switch to logging into a different account.
+  if (!register && profileSetupMode && auth.currentUser) {
+    setProfileSetupMode(false);
+    await signOut(auth);
+    return;
+  }
+
+  if (!auth.currentUser) {
+    setProfileSetupMode(false);
+  }
+
   $("login-form").hidden = register;
   $("register-form").hidden = !register;
+
   $("show-login").classList.toggle("active", !register);
   $("show-register").classList.toggle("active", register);
+
   $("show-login").hidden = false;
   $("show-register").hidden = false;
+
   setMessage("auth-message");
 }
 
-$("show-login").addEventListener("click", () => switchAuthTab(false));
-$("show-register").addEventListener("click", () => switchAuthTab(true));
+$("show-login").addEventListener("click", () => {
+  switchAuthTab(false);
+});
+
+$("show-register").addEventListener("click", () => {
+  switchAuthTab(true);
+});
 
 $("register-form").addEventListener("submit", async event => {
   event.preventDefault();
+
   if (busy) return;
 
   const name = cleanName($("register-name").value);
@@ -439,30 +528,52 @@ $("register-form").addEventListener("submit", async event => {
   try {
     await authReady;
 
-    const credential = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
+    if (profileSetupMode) {
+      // Reuse the account that is already signed in.
+      if (!auth.currentUser) {
+        throw new Error(
+          "Your session has expired. Please log in again."
+        );
+      }
 
-    currentUser = credential.user;
+      currentUser = auth.currentUser;
+    } else {
+      const credential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      currentUser = credential.user;
+    }
 
     const avatarUrl = await uploadAvatar(selectedRegisterFile);
 
-    currentProfile = {
+    const profile = {
       displayName: name,
       avatarUrl,
       updatedAt: Date.now()
     };
 
-    await set(ref(db, `users/${currentUser.uid}`), currentProfile);
+    // This requires the published Realtime Database rules to permit
+    // the signed-in user to write to /users/{their own UID}.
+    await set(ref(db, `users/${currentUser.uid}`), profile);
 
+    currentProfile = profile;
     selectedRegisterFile = null;
+
+    setProfileSetupMode(false);
     $("register-form").reset();
+
+    $("login-form").hidden = false;
+    $("register-form").hidden = true;
+    $("show-login").hidden = false;
+    $("show-register").hidden = false;
 
     renderHomeProfile();
     showScreen("home-screen");
     setMessage("home-message", "Your account is ready!", "success");
+    setConnection("Connected");
   } catch (error) {
     setMessage("auth-message", friendlyError(error), "error");
   } finally {
@@ -472,6 +583,7 @@ $("register-form").addEventListener("submit", async event => {
 
 $("login-form").addEventListener("submit", async event => {
   event.preventDefault();
+
   if (busy) return;
 
   setBusy(true);
@@ -492,11 +604,13 @@ $("login-form").addEventListener("submit", async event => {
 });
 
 function friendlyError(error) {
+  const code = error?.code || "";
+
   const messages = {
     "auth/invalid-credential":
       "Your email or password is incorrect.",
     "auth/email-already-in-use":
-      "An account already uses that email.",
+      "An account already uses that email. Choose Log in, or finish setting up the account if you are already signed in.",
     "auth/invalid-email":
       "Enter a valid email address.",
     "auth/weak-password":
@@ -506,10 +620,18 @@ function friendlyError(error) {
     "auth/network-request-failed":
       "Network error. Check your internet connection.",
     "PERMISSION_DENIED":
-      "Firebase denied access. Check your database security rules."
+      "Firebase denied access. Check that your published database rules match the current profile fields.",
+    "database/permission-denied":
+      "Firebase denied access. Check your published Realtime Database rules."
   };
 
-  return messages[error.code] || error.message || "Something went wrong.";
+  if (messages[code]) return messages[code];
+
+  if (error?.message?.includes("PERMISSION_DENIED")) {
+    return "Firebase denied access. Check your published Realtime Database rules.";
+  }
+
+  return error?.message || "Something went wrong.";
 }
 
 async function createRoom() {
@@ -523,23 +645,28 @@ async function createRoom() {
       const code = randomCode();
       const roomRef = ref(db, `rooms/${code}`);
 
-      const result = await runTransaction(roomRef, existing => {
-        if (existing !== null) return;
+      const result = await runTransaction(
+        roomRef,
+        existing => {
+          if (existing !== null) return;
 
-        return {
-          code,
-          hostUid: currentUser.uid,
-          status: "lobby",
-          createdAt: Date.now(),
-          players: {
-            [currentUser.uid]: {
-              displayName: currentProfile.displayName,
-              avatarUrl: currentProfile.avatarUrl || null,
-              joinedAt: Date.now()
+          return {
+            code,
+            hostUid: currentUser.uid,
+            status: "lobby",
+            createdAt: Date.now(),
+            players: {
+              [currentUser.uid]: {
+                displayName: currentProfile.displayName,
+                avatarUrl:
+                  currentProfile.avatarUrl || currentProfile.avatar || null,
+                joinedAt: Date.now()
+              }
             }
-          }
-        };
-      }, { applyLocally: false });
+          };
+        },
+        { applyLocally: false }
+      );
 
       if (result.committed) {
         enterRoom(code);
@@ -561,6 +688,7 @@ $("create-room").addEventListener("click", createRoom);
 
 $("join-form").addEventListener("submit", async event => {
   event.preventDefault();
+
   if (busy || !currentUser || !currentProfile) return;
 
   const code = normaliseCode($("room-code").value);
@@ -598,7 +726,7 @@ $("join-form").addEventListener("submit", async event => {
 
     await set(ref(db, `rooms/${code}/players/${currentUser.uid}`), {
       displayName: currentProfile.displayName,
-      avatarUrl: currentProfile.avatarUrl || null,
+      avatarUrl: currentProfile.avatarUrl || currentProfile.avatar || null,
       joinedAt: players[currentUser.uid]?.joinedAt ?? Date.now()
     });
 
@@ -624,36 +752,43 @@ function enterRoom(code) {
 
   const roomRef = ref(db, `rooms/${code}`);
 
-  stopRoomListener = onValue(roomRef, snapshot => {
-    if (!snapshot.exists()) {
-      currentRoomCode = null;
-      currentRoom = null;
-      stopRoomListener = null;
-      showScreen("home-screen");
-      setMessage("home-message", "This room has been closed.");
-      return;
+  stopRoomListener = onValue(
+    roomRef,
+    snapshot => {
+      if (!snapshot.exists()) {
+        currentRoomCode = null;
+        currentRoom = null;
+
+        if (stopRoomListener) stopRoomListener();
+        stopRoomListener = null;
+
+        showScreen("home-screen");
+        setMessage("home-message", "This room has been closed.");
+        return;
+      }
+
+      currentRoom = snapshot.val();
+
+      if (currentRoom.status === "playing") {
+        showScreen("game-screen");
+        return;
+      }
+
+      if (currentRoom.status !== "lobby") {
+        showScreen("home-screen");
+        setMessage("home-message", "This room is no longer available.");
+        return;
+      }
+
+      showScreen("lobby-screen");
+      renderLobby();
+      setMessage("lobby-message");
+      setConnection("Connected");
+    },
+    error => {
+      setMessage("lobby-message", friendlyError(error), "error");
     }
-
-    currentRoom = snapshot.val();
-
-    if (currentRoom.status === "playing") {
-      showScreen("game-screen");
-      return;
-    }
-
-    if (currentRoom.status !== "lobby") {
-      showScreen("home-screen");
-      setMessage("home-message", "This room is no longer available.");
-      return;
-    }
-
-    showScreen("lobby-screen");
-    renderLobby();
-    setMessage("lobby-message");
-    setConnection("Connected");
-  }, error => {
-    setMessage("lobby-message", friendlyError(error), "error");
-  });
+  );
 }
 
 function renderLobby() {
@@ -686,7 +821,7 @@ function renderLobby() {
 
     const avatar = document.createElement("div");
     avatar.className = "player-avatar";
-    showAvatar(avatar, player.avatarUrl || null);
+    showAvatar(avatar, player.avatarUrl || player.avatar || null);
 
     const details = document.createElement("div");
     details.className = "player-details";
@@ -710,10 +845,14 @@ function renderLobby() {
 }
 
 $("copy-code").addEventListener("click", async () => {
+  if (!currentRoomCode) return;
+
   try {
     await navigator.clipboard.writeText(currentRoomCode);
     $("copy-code").textContent = "Copied!";
-    setTimeout(() => $("copy-code").textContent = "Copy code", 1500);
+    setTimeout(() => {
+      $("copy-code").textContent = "Copy code";
+    }, 1500);
   } catch {
     setMessage("lobby-message", `Your room code is ${currentRoomCode}.`);
   }
@@ -757,6 +896,7 @@ async function leaveRoom() {
   stopRoomListener = null;
   currentRoomCode = null;
   currentRoom = null;
+
   showScreen("home-screen");
 }
 
@@ -777,6 +917,7 @@ $("cancel-profile").addEventListener("click", () => {
 
 $("profile-form").addEventListener("submit", async event => {
   event.preventDefault();
+
   if (busy) return;
 
   setBusy(true);
@@ -798,8 +939,17 @@ $("profile-form").addEventListener("submit", async event => {
 });
 
 $("logout").addEventListener("click", async () => {
-  if (currentRoomCode) await leaveRoom();
-  await signOut(auth);
+  if (busy) return;
+
+  try {
+    if (currentRoomCode) {
+      await leaveRoom();
+    }
+
+    await signOut(auth);
+  } catch (error) {
+    setMessage("home-message", friendlyError(error), "error");
+  }
 });
 
 $("start-game").addEventListener("click", async () => {
@@ -812,11 +962,15 @@ $("start-game").addEventListener("click", async () => {
 });
 
 $("return-lobby").addEventListener("click", () => {
-  if (currentRoomCode) showScreen("lobby-screen");
-  else showScreen("home-screen");
+  if (currentRoomCode) {
+    showScreen("lobby-screen");
+  } else {
+    showScreen("home-screen");
+  }
 });
 
 onAuthStateChanged(auth, async user => {
+  const thisVersion = ++authStateVersion;
   currentUser = user;
 
   if (!user) {
@@ -826,8 +980,17 @@ onAuthStateChanged(auth, async user => {
     currentProfile = null;
     currentRoomCode = null;
     currentRoom = null;
+    selectedRegisterFile = null;
+    selectedProfileFile = null;
+
+    setProfileSetupMode(false);
 
     showScreen("auth-screen");
+    $("login-form").hidden = false;
+    $("register-form").hidden = true;
+    $("show-login").hidden = false;
+    $("show-register").hidden = false;
+
     switchAuthTab(false);
     setConnection("Signed out");
     return;
@@ -837,8 +1000,15 @@ onAuthStateChanged(auth, async user => {
 
   try {
     await authReady;
+
+    if (thisVersion !== authStateVersion) return;
+
     await loadProfile(user);
+
+    if (thisVersion !== authStateVersion) return;
   } catch (error) {
+    if (thisVersion !== authStateVersion) return;
+
     showScreen("auth-screen");
     setMessage("auth-message", friendlyError(error), "error");
     setConnection("Connection error");
