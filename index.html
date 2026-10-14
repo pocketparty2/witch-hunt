@@ -14,6 +14,7 @@
   </header>
 
   <main>
+    <!-- AUTHENTICATION SCREEN -->
     <section id="auth-screen" class="screen">
       <div class="hero">
         <span class="eyebrow">A SOCIAL DEDUCTION GAME</span>
@@ -29,18 +30,33 @@
 
         <form id="login-form">
           <label for="login-email">Email address</label>
-          <input id="login-email" type="email" autocomplete="email" required>
+          <input
+            id="login-email"
+            type="email"
+            autocomplete="email"
+            required
+          >
 
           <label for="login-password">Password</label>
-          <input id="login-password" type="password" autocomplete="current-password" required>
+          <input
+            id="login-password"
+            type="password"
+            autocomplete="current-password"
+            required
+          >
 
           <button class="primary" type="submit">Enter the village</button>
         </form>
 
         <form id="register-form" hidden>
           <label for="register-name">Player name</label>
-          <input id="register-name" maxlength="20" autocomplete="nickname"
-            placeholder="What should everyone call you?" required>
+          <input
+            id="register-name"
+            maxlength="20"
+            autocomplete="nickname"
+            placeholder="What should everyone call you?"
+            required
+          >
 
           <label>Your profile picture</label>
           <div id="register-avatar-preview" class="photo-preview">
@@ -48,20 +64,46 @@
           </div>
 
           <div class="photo-actions">
-            <label class="secondary photo-button" for="register-avatar-file">Choose a photo</label>
-            <input id="register-avatar-file" class="photo-input" type="file" accept="image/*">
-            <label class="secondary photo-button" for="register-camera-file">Take a photo</label>
-            <input id="register-camera-file" class="photo-input" type="file"
-              accept="image/*" capture="user">
+            <label class="secondary photo-button" for="register-avatar-file">
+              Choose a photo
+            </label>
+            <input
+              id="register-avatar-file"
+              class="photo-input"
+              type="file"
+              accept="image/*"
+            >
+
+            <label class="secondary photo-button" for="register-camera-file">
+              Take a photo
+            </label>
+            <input
+              id="register-camera-file"
+              class="photo-input"
+              type="file"
+              accept="image/*"
+              capture="user"
+            >
           </div>
+
           <p class="photo-help">Use a JPG, PNG, GIF or WebP image, up to 5 MB.</p>
 
           <label for="register-email">Email address</label>
-          <input id="register-email" type="email" autocomplete="email" required>
+          <input
+            id="register-email"
+            type="email"
+            autocomplete="email"
+            required
+          >
 
           <label for="register-password">Password</label>
-          <input id="register-password" type="password" minlength="6"
-            autocomplete="new-password" required>
+          <input
+            id="register-password"
+            type="password"
+            minlength="6"
+            autocomplete="new-password"
+            required
+          >
 
           <button class="primary" type="submit">Create account</button>
         </form>
@@ -70,6 +112,7 @@
       </div>
     </section>
 
+    <!-- HOME SCREEN -->
     <section id="home-screen" class="screen" hidden>
       <div class="welcome">
         <span class="eyebrow">WELCOME BACK</span>
@@ -77,19 +120,26 @@
         <p>Create a room or join your friends with their four-letter code.</p>
       </div>
 
+      <!-- PLAYER PROFILE -->
       <div class="panel profile-panel">
         <div id="home-avatar" class="big-avatar">
           <span class="photo-placeholder">?</span>
         </div>
+
         <div class="profile-info">
           <strong id="home-name">Player</strong>
           <span>Your player profile</span>
         </div>
-        <button id="edit-profile" class="secondary" type="button">Edit profile</button>
+
+        <button id="edit-profile" class="secondary" type="button">
+          Edit profile
+        </button>
       </div>
 
+      <!-- PROFILE EDITOR -->
       <div id="profile-editor" class="panel" hidden>
         <h2>Your profile</h2>
+
         <form id="profile-form">
           <label for="profile-name">Player name</label>
           <input id="profile-name" maxlength="20" required>
@@ -100,12 +150,28 @@
           </div>
 
           <div class="photo-actions">
-            <label class="secondary photo-button" for="profile-avatar-file">Choose a photo</label>
-            <input id="profile-avatar-file" class="photo-input" type="file" accept="image/*">
-            <label class="secondary photo-button" for="profile-camera-file">Take a photo</label>
-            <input id="profile-camera-file" class="photo-input" type="file"
-              accept="image/*" capture="user">
+            <label class="secondary photo-button" for="profile-avatar-file">
+              Choose a photo
+            </label>
+            <input
+              id="profile-avatar-file"
+              class="photo-input"
+              type="file"
+              accept="image/*"
+            >
+
+            <label class="secondary photo-button" for="profile-camera-file">
+              Take a photo
+            </label>
+            <input
+              id="profile-camera-file"
+              class="photo-input"
+              type="file"
+              accept="image/*"
+              capture="user"
+            >
           </div>
+
           <p class="photo-help">Leave the picture unchanged to keep your current photo.</p>
 
           <button class="primary" type="submit">Save profile</button>
@@ -113,35 +179,88 @@
         </form>
       </div>
 
-      <div class="home-grid">
-        <div class="panel">
-          <span class="card-icon">🕯️</span>
-          <h2>Host a game</h2>
-          <p>Create a private room and invite your friends.</p>
-          <button id="create-room" class="primary" type="button">Create room</button>
+      <!-- HOST/JOIN GAME TABS -->
+      <div class="panel home-games">
+        <div class="home-game-tabs" role="tablist" aria-label="Game options">
+          <button
+            id="join-tab"
+            class="home-game-tab active"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            aria-controls="join-game-panel"
+          >
+            🔮 Join a game
+          </button>
+
+          <button
+            id="host-tab"
+            class="home-game-tab"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="host-game-panel"
+          >
+            🕯️ Host a game
+          </button>
         </div>
 
-        <div class="panel">
-          <span class="card-icon">🔮</span>
+        <!-- JOIN GAME: DEFAULT TAB -->
+        <div
+          id="join-game-panel"
+          class="home-game-panel"
+          role="tabpanel"
+          aria-labelledby="join-tab"
+        >
           <h2>Join a game</h2>
           <p>Enter the four-letter code from your host.</p>
+
           <form id="join-form">
             <label for="room-code">Room code</label>
-            <input id="room-code" maxlength="4" minlength="4"
-              placeholder="ABCD" autocomplete="off" required>
+            <input
+              id="room-code"
+              maxlength="4"
+              minlength="4"
+              placeholder="ABCD"
+              autocomplete="off"
+              autocapitalize="characters"
+              required
+            >
+
             <button class="primary" type="submit">Join room</button>
           </form>
         </div>
+
+        <!-- HOST GAME -->
+        <div
+          id="host-game-panel"
+          class="home-game-panel"
+          role="tabpanel"
+          aria-labelledby="host-tab"
+          hidden
+        >
+          <h2>Host a game</h2>
+          <p>Create a private room and invite your friends to join.</p>
+
+          <button id="create-room" class="primary" type="button">
+            Create room
+          </button>
+        </div>
       </div>
 
+      <!-- ACCOUNT ACTIONS -->
       <div class="account-actions">
         <button id="logout" class="text-button" type="button">Log out</button>
       </div>
+
       <p id="home-message" class="message" role="status"></p>
     </section>
 
+    <!-- LOBBY SCREEN -->
     <section id="lobby-screen" class="screen" hidden>
-      <button id="leave-room" class="text-button" type="button">← Leave room</button>
+      <button id="leave-room" class="text-button" type="button">
+        ← Leave room
+      </button>
 
       <div class="lobby-heading">
         <span class="eyebrow">THE GATHERING BEGINS</span>
@@ -151,6 +270,7 @@
 
       <div class="room-code-card">
         <span class="eyebrow">YOUR ROOM CODE</span>
+
         <div class="room-code-row">
           <strong id="display-room-code">----</strong>
           <button id="copy-code" class="secondary" type="button">Copy code</button>
@@ -163,6 +283,7 @@
             <h2>The players</h2>
             <p id="player-count">0 players</p>
           </div>
+
           <span id="lobby-status" class="status-pill">Waiting</span>
         </div>
 
@@ -170,13 +291,16 @@
 
         <div class="lobby-footer">
           <p id="lobby-hint">Waiting for your friends to join...</p>
-          <button id="start-game" class="primary" type="button" disabled>Start game</button>
+          <button id="start-game" class="primary" type="button" disabled>
+            Start game
+          </button>
         </div>
       </div>
 
       <p id="lobby-message" class="message" role="status"></p>
     </section>
 
+    <!-- GAME SCREEN -->
     <section id="game-screen" class="screen" hidden>
       <div class="game-heading">
         <span class="eyebrow">THE GAME HAS BEGUN</span>
@@ -186,8 +310,11 @@
 
       <article id="role-card" class="role-card" aria-live="polite">
         <div id="role-symbol" class="role-symbol" aria-hidden="true">🔮</div>
+
         <span id="role-status" class="role-status">RETRIEVING YOUR ROLE</span>
+
         <h2 id="role-title">Your secret role is being prepared...</h2>
+
         <p id="role-description">
           Your private role information is being retrieved from the village records.
         </p>
@@ -199,7 +326,13 @@
         </div>
 
         <div id="role-error" class="role-error" role="status" hidden></div>
-        <button id="retry-role" class="primary retry-button" type="button" hidden>
+
+        <button
+          id="retry-role"
+          class="primary retry-button"
+          type="button"
+          hidden
+        >
           Try loading my role again
         </button>
 
@@ -209,7 +342,9 @@
       </article>
 
       <div class="game-actions">
-        <button id="return-lobby" class="secondary" type="button">Leave game</button>
+        <button id="return-lobby" class="secondary" type="button">
+          Leave game
+        </button>
       </div>
     </section>
   </main>
@@ -219,7 +354,35 @@
     <span>Choose your allies carefully.</span>
   </footer>
 
+  <!-- HOME SCREEN TAB SWITCHING -->
+  <script>
+    (() => {
+      const joinTab = document.getElementById("join-tab");
+      const hostTab = document.getElementById("host-tab");
+      const joinPanel = document.getElementById("join-game-panel");
+      const hostPanel = document.getElementById("host-game-panel");
+
+      function showGameTab(tab) {
+        const joining = tab === "join";
+
+        joinPanel.hidden = !joining;
+        hostPanel.hidden = joining;
+
+        joinTab.classList.toggle("active", joining);
+        hostTab.classList.toggle("active", !joining);
+
+        joinTab.setAttribute("aria-selected", String(joining));
+        hostTab.setAttribute("aria-selected", String(!joining));
+      }
+
+      joinTab.addEventListener("click", () => showGameTab("join"));
+      hostTab.addEventListener("click", () => showGameTab("host"));
+
+      showGameTab("join");
+    })();
+  </script>
+
+  <!-- MAIN GAME SCRIPT -->
   <script type="module" src="js/app.js"></script>
 </body>
 </html>
-
