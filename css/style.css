@@ -23,13 +23,14 @@
 html,
 body {
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   margin: 0;
-  overflow: hidden;
-  overscroll-behavior: none;
+  overscroll-behavior-y: contain;
 }
 
 body {
+  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background:
@@ -162,7 +163,7 @@ label {
   color: var(--success);
 }
 
-/* Header and footer */
+/* HEADER AND FOOTER */
 
 .topbar {
   position: relative;
@@ -175,7 +176,7 @@ label {
   gap: 12px;
   padding: 0 22px;
   border-bottom: 1px solid #ffffff12;
-  background: #100d16eF;
+  background: #100d16ef;
 }
 
 .brand {
@@ -214,12 +215,11 @@ footer span:first-child {
   letter-spacing: 0.13em;
 }
 
-/* Shared screen layout */
+/* SHARED SCREEN LAYOUT */
 
 main {
-  flex: 1 1 auto;
+  flex: 1 0 auto;
   min-width: 0;
-  min-height: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -229,9 +229,8 @@ main {
 .screen {
   width: 100%;
   max-width: var(--page-width);
-  height: 100%;
   min-width: 0;
-  min-height: 0;
+  min-height: 100%;
   margin: 0 auto;
   padding: 20px 24px;
   display: flex;
@@ -287,24 +286,26 @@ main {
   color: var(--text);
 }
 
-/* Login and registration */
+/* LOGIN AND REGISTRATION */
 
 #auth-screen {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 410px);
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(24px, 5vw, 64px);
+  gap: 14px;
 }
 
 .hero {
+  width: 100%;
+  max-width: 410px;
   min-width: 0;
-  max-width: 540px;
-  justify-self: center;
+  text-align: center;
 }
 
 .hero h1 {
   max-width: 500px;
+  margin: 8px auto;
   font-size: clamp(2rem, 5vw, 3.5rem);
   line-height: 1.08;
 }
@@ -325,7 +326,6 @@ main {
 .auth-panel {
   width: 100%;
   max-width: 410px;
-  justify-self: center;
   padding: 20px;
 }
 
@@ -413,6 +413,7 @@ main {
 #home-avatar {
   width: 70px;
   height: 70px;
+  flex-shrink: 0;
   margin: 0;
   overflow: hidden;
   display: grid;
@@ -464,20 +465,28 @@ main {
   text-align: center;
 }
 
-/* Home screen */
+/* HOME SCREEN: VERTICAL LAYOUT */
 
 #home-screen {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
-  align-content: center;
-  align-items: stretch;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+#home-screen > * {
+  width: 100%;
+  max-width: 480px;
 }
 
 .welcome {
-  grid-column: 1 / -1;
+  width: 100%;
   text-align: center;
+}
+
+.welcome h1 {
+  margin: 5px 0;
 }
 
 .welcome p {
@@ -485,7 +494,7 @@ main {
 }
 
 .profile-panel {
-  grid-column: 1 / -1;
+  width: 100%;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -517,78 +526,142 @@ main {
 }
 
 #profile-editor {
-  grid-column: 1 / -1;
   width: 100%;
-  min-width: 0;
   padding: 14px;
 }
 
-.home-grid {
-  grid-column: 1 / -1;
-  min-width: 0;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+#profile-editor h2 {
+  margin-top: 0;
 }
 
-.home-grid > .panel {
+/* HOST/JOIN GAME TABBER */
+
+.home-games {
+  width: 100%;
+  max-width: 480px;
+  min-width: 0;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.home-game-tabs {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid #ffffff0a;
+  border-radius: 14px;
+  background: #100d16;
+}
+
+.home-game-tab {
+  min-width: 0;
+  min-height: 42px;
+  padding: 10px 7px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.home-game-tab.active {
+  border-color: #c5a0ff55;
+  background: #c5a0ff20;
+  color: var(--purple-light);
+}
+
+.home-game-tab:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+}
+
+.home-game-panel {
+  width: 100%;
+  min-width: 0;
+}
+
+.home-game-panel h2 {
+  margin: 0 0 6px;
+}
+
+.home-game-panel p {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.home-game-panel form {
+  width: 100%;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  justify-content: center;
-  gap: 5px;
-  padding: clamp(12px, 2vw, 20px);
+  gap: 10px;
 }
 
-.home-grid > .panel p {
-  color: var(--muted);
-  font-size: 0.82rem;
+.home-game-panel form label {
+  margin-bottom: -4px;
 }
 
-.home-grid > .panel h2 {
-  margin: 3px 0;
+.home-game-panel input {
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.card-icon {
-  font-size: 1.6rem;
+.home-game-panel .primary {
+  width: 100%;
+  margin-top: 5px;
 }
 
-#join-form {
-  gap: 7px;
+.home-game-panel[hidden] {
+  display: none !important;
 }
 
 .account-actions {
-  grid-column: 1 / -1;
+  width: 100%;
   display: flex;
   justify-content: center;
+  margin-top: 0;
+}
+
+#home-screen .account-actions .text-button {
+  max-width: 100%;
 }
 
 #home-message {
-  grid-column: 1 / -1;
+  width: 100%;
   text-align: center;
 }
 
-/* Lobby */
+/* LOBBY */
 
 #lobby-screen {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  align-content: center;
-  align-items: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
   gap: 12px;
 }
 
+#lobby-screen > * {
+  width: 100%;
+  max-width: 520px;
+}
+
 #leave-room {
-  grid-column: 1 / -1;
-  justify-self: start;
+  align-self: flex-start;
 }
 
 .lobby-heading {
-  grid-column: 1;
-  align-self: end;
+  width: 100%;
   min-width: 0;
 }
 
@@ -601,8 +674,7 @@ main {
 }
 
 .room-code-card {
-  grid-column: 2;
-  align-self: center;
+  width: 100%;
   min-width: 0;
   padding: 16px;
   border: 1px solid #8e70b55c;
@@ -635,9 +707,8 @@ main {
 }
 
 .players-panel {
-  grid-column: 1 / -1;
+  width: 100%;
   min-width: 0;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -675,7 +746,7 @@ main {
   width: 100%;
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-content: start;
   gap: 8px;
 }
@@ -750,23 +821,27 @@ main {
 }
 
 #lobby-message {
-  grid-column: 1 / -1;
   text-align: center;
 }
 
-/* Game screen and role card */
+/* GAME SCREEN AND ROLE CARD */
 
 #game-screen {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 10px;
   text-align: center;
 }
 
+#game-screen > * {
+  width: 100%;
+  max-width: 460px;
+}
+
 .game-heading {
   width: 100%;
-  max-width: 600px;
   flex-shrink: 0;
 }
 
@@ -783,10 +858,8 @@ main {
   width: 100%;
   max-width: 460px;
   min-width: 0;
-  min-height: 0;
   margin: 0 auto;
   padding: clamp(14px, 2.5vh, 22px);
-  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 20px;
   background:
@@ -904,7 +977,7 @@ main {
   font-size: 0.8rem;
 }
 
-/* Oracle bonus */
+/* ORACLE BONUS */
 
 .oracle-bonus {
   width: 100%;
@@ -914,7 +987,7 @@ main {
   flex-shrink: 1;
   margin: 0 auto;
   padding: 12px 14px;
-  overflow: hidden;
+  overflow: auto;
   border: 1px solid #a58bce;
   border-radius: 15px;
   background:
@@ -938,7 +1011,7 @@ main {
   line-height: 1.35;
 }
 
-/* Host page controls */
+/* HOST PAGE CONTROLS */
 
 .host-page-controls {
   width: 100%;
@@ -959,16 +1032,14 @@ main {
   width: 100%;
 }
 
-/* Mission and team selection */
+/* MISSION AND TEAM SELECTION */
 
 .mission-panel {
   width: 100%;
   max-width: 520px;
   min-width: 0;
-  min-height: 0;
   margin: 0 auto;
   padding: 14px;
-  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 17px;
   background:
@@ -1186,17 +1257,13 @@ main {
   color: var(--success);
 }
 
-/* Compact desktops and laptops */
+/* COMPACT DESKTOPS AND LAPTOPS */
 
 @media (max-height: 760px) {
   .screen {
     padding-top: 10px;
     padding-bottom: 10px;
     gap: 9px;
-  }
-
-  #auth-screen {
-    gap: 24px;
   }
 
   .auth-panel {
@@ -1262,7 +1329,7 @@ main {
   }
 }
 
-/* Phones */
+/* PHONES */
 
 @media (max-width: 650px) {
   .topbar {
@@ -1277,21 +1344,17 @@ main {
   }
 
   .screen {
+    min-height: 100%;
     padding: 12px;
     gap: 10px;
   }
 
   #auth-screen {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, auto);
-    align-content: center;
     gap: 14px;
   }
 
   .hero {
-    width: 100%;
     max-width: 410px;
-    text-align: center;
   }
 
   .hero h1 {
@@ -1305,13 +1368,11 @@ main {
   }
 
   .auth-panel {
-    width: 100%;
-    max-width: 410px;
     padding: 14px;
   }
 
   #home-screen {
-    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    justify-content: flex-start;
     gap: 9px;
   }
 
@@ -1338,34 +1399,34 @@ main {
     font-size: 0.72rem;
   }
 
-  .home-grid {
-    gap: 8px;
+  .home-games {
+    padding: 12px;
+    gap: 13px;
   }
 
-  .home-grid > .panel {
-    padding: 11px;
+  .home-game-tabs {
+    gap: 5px;
+    padding: 4px;
   }
 
-  .home-grid > .panel p {
-    font-size: 0.75rem;
+  .home-game-tab {
+    min-height: 40px;
+    padding: 9px 5px;
+    font-size: 0.78rem;
   }
 
-  .card-icon {
-    font-size: 1.3rem;
+  .home-game-panel h2 {
+    font-size: 1.15rem;
+  }
+
+  .home-game-panel p {
+    margin-bottom: 12px;
+    font-size: 0.78rem;
   }
 
   #lobby-screen {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+    justify-content: flex-start;
     gap: 9px;
-  }
-
-  #leave-room {
-    grid-column: 1;
-  }
-
-  .lobby-heading {
-    grid-column: 1;
   }
 
   .lobby-heading h1 {
@@ -1379,7 +1440,6 @@ main {
   }
 
   .room-code-card {
-    grid-column: 1;
     padding: 10px 13px;
   }
 
@@ -1388,7 +1448,6 @@ main {
   }
 
   .players-panel {
-    grid-column: 1;
     gap: 8px;
     padding: 11px;
   }
@@ -1427,10 +1486,6 @@ main {
     font-size: 0.75rem;
   }
 
-  #lobby-message {
-    grid-column: 1;
-  }
-
   #game-screen {
     gap: 7px;
     padding: 8px 12px;
@@ -1446,7 +1501,6 @@ main {
   }
 
   #role-card {
-    max-width: 460px;
     padding: 12px;
     border-radius: 16px;
   }
@@ -1461,11 +1515,11 @@ main {
   }
 
   .mission-panel {
-    max-width: 520px;
+    padding: 10px;
   }
 }
 
-/* Very small phones */
+/* VERY SMALL PHONES */
 
 @media (max-width: 360px) {
   .screen {
@@ -1477,21 +1531,21 @@ main {
     padding: 11px;
   }
 
-  .home-grid {
-    gap: 6px;
+  .home-games {
+    padding: 10px;
   }
 
-  .home-grid > .panel {
-    padding: 8px;
+  .home-game-tab {
+    font-size: 0.72rem;
   }
 
-  .home-grid > .panel p {
-    font-size: 0.7rem;
+  .home-game-panel p {
+    font-size: 0.74rem;
   }
 
-  .home-grid button {
-    padding: 8px 5px;
-    font-size: 0.75rem;
+  .home-game-panel button {
+    padding: 9px 7px;
+    font-size: 0.78rem;
   }
 
   #players-list {
@@ -1518,7 +1572,7 @@ main {
   }
 }
 
-/* Short phone screens */
+/* SHORT PHONE SCREENS */
 
 @media (max-height: 650px) {
   .topbar {
@@ -1581,6 +1635,20 @@ main {
     font-size: 0.65rem;
   }
 
+  .home-games {
+    gap: 9px;
+    padding: 9px;
+  }
+
+  .home-game-tab {
+    min-height: 35px;
+    padding: 7px 4px;
+  }
+
+  .home-game-panel p {
+    margin-bottom: 8px;
+  }
+
   .game-heading .eyebrow {
     font-size: 0.6rem;
   }
@@ -1641,117 +1709,5 @@ main {
   .host-page-controls button {
     min-height: 35px;
     padding: 7px;
-  }
-}
-
-/* Keep every screen in a vertical, phone-style layout */
-
-#auth-screen {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-}
-
-.hero {
-  width: 100%;
-  max-width: 410px;
-  text-align: center;
-}
-
-.auth-panel {
-  width: 100%;
-  max-width: 410px;
-}
-
-#home-screen {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
-
-#home-screen > * {
-  width: 100%;
-  max-width: 480px;
-}
-
-.home-grid {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.home-grid > .panel {
-  width: 100%;
-}
-
-#lobby-screen {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
-
-#lobby-screen > * {
-  width: 100%;
-  max-width: 520px;
-}
-
-.lobby-heading {
-  width: 100%;
-}
-
-.room-code-card {
-  width: 100%;
-}
-
-.players-panel {
-  width: 100%;
-  min-height: 0;
-}
-
-#players-list {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-#game-screen {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-}
-
-#game-screen > * {
-  width: 100%;
-  max-width: 460px;
-}
-
-#role-card,
-.oracle-bonus,
-.host-page-controls,
-.mission-panel,
-.game-actions {
-  width: 100%;
-  max-width: 460px;
-}
-
-/* Keep the vertical layout on smaller screens too */
-
-@media (max-width: 650px) {
-  #auth-screen,
-  #home-screen,
-  #lobby-screen,
-  #game-screen {
-    flex-direction: column;
-  }
-
-  .home-grid {
-    flex-direction: column;
   }
 }
