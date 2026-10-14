@@ -1,1 +1,178 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#151020">
+  <title>Witch Hunt</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./">🕯️ WITCH HUNT</a>
+    <span id="connection-status" class="connection">Connecting...</span>
+  </header>
+
+  <main>
+    <section id="auth-screen" class="screen">
+      <div class="hero">
+        <span class="eyebrow">A SOCIAL DEDUCTION GAME</span>
+        <h1>Trust is a <span>dangerous</span> thing.</h1>
+        <p>Gather your friends. Complete the missions. Find the witches before it's too late.</p>
+      </div>
+
+      <div class="panel">
+        <div class="tabs">
+          <button id="show-login" class="tab active" type="button">Log in</button>
+          <button id="show-register" class="tab" type="button">Create account</button>
+        </div>
+
+        <form id="login-form">
+          <label for="login-email">Email address</label>
+          <input id="login-email" type="email" autocomplete="email" required>
+
+          <label for="login-password">Password</label>
+          <input id="login-password" type="password" autocomplete="current-password" required>
+
+          <button class="primary" type="submit">Enter the village</button>
+        </form>
+
+        <form id="register-form" hidden>
+          <label for="register-name">Player name</label>
+          <input id="register-name" maxlength="20" autocomplete="nickname"
+            placeholder="What should everyone call you?" required>
+
+          <label>Choose your avatar</label>
+          <div id="register-avatars" class="avatar-picker"></div>
+
+          <label for="register-email">Email address</label>
+          <input id="register-email" type="email" autocomplete="email" required>
+
+          <label for="register-password">Password</label>
+          <input id="register-password" type="password" minlength="6"
+            autocomplete="new-password" required>
+
+          <button class="primary" type="submit">Create account</button>
+        </form>
+
+        <p id="auth-message" class="message" role="status"></p>
+      </div>
+    </section>
+
+    <section id="home-screen" class="screen" hidden>
+      <div class="welcome">
+        <span class="eyebrow">WELCOME BACK</span>
+        <h1>The village awaits.</h1>
+        <p>Create a room or join your friends with their four-letter code.</p>
+      </div>
+
+      <div class="panel profile-panel">
+        <div id="home-avatar" class="big-avatar">🦇</div>
+        <div class="profile-info">
+          <strong id="home-name">Player</strong>
+          <span>Your player profile</span>
+        </div>
+        <button id="edit-profile" class="secondary" type="button">Edit profile</button>
+      </div>
+
+      <div id="profile-editor" class="panel" hidden>
+        <h2>Your profile</h2>
+        <form id="profile-form">
+          <label for="profile-name">Player name</label>
+          <input id="profile-name" maxlength="20" required>
+          <label>Choose your avatar</label>
+          <div id="profile-avatars" class="avatar-picker"></div>
+          <button class="primary" type="submit">Save profile</button>
+          <button id="cancel-profile" class="secondary" type="button">Cancel</button>
+        </form>
+      </div>
+
+      <div class="home-grid">
+        <div class="panel">
+          <span class="card-icon">🕯️</span>
+          <h2>Host a game</h2>
+          <p>Create a private room and invite your friends.</p>
+          <button id="create-room" class="primary" type="button">Create room</button>
+        </div>
+
+        <div class="panel">
+          <span class="card-icon">🔮</span>
+          <h2>Join a game</h2>
+          <p>Enter the four-letter code from your host.</p>
+          <form id="join-form">
+            <label for="room-code">Room code</label>
+            <input id="room-code" maxlength="4" minlength="4"
+              placeholder="ABCD" autocomplete="off" required>
+            <button class="primary" type="submit">Join room</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="account-actions">
+        <button id="logout" class="text-button" type="button">Log out</button>
+      </div>
+      <p id="home-message" class="message" role="status"></p>
+    </section>
+
+    <section id="lobby-screen" class="screen" hidden>
+      <button id="leave-room" class="text-button" type="button">← Leave room</button>
+
+      <div class="lobby-heading">
+        <span class="eyebrow">THE GATHERING BEGINS</span>
+        <h1>Waiting for the others.</h1>
+        <p>Invite your friends using this room code.</p>
+      </div>
+
+      <div class="room-code-card">
+        <span class="eyebrow">YOUR ROOM CODE</span>
+        <div class="room-code-row">
+          <strong id="display-room-code">----</strong>
+          <button id="copy-code" class="secondary" type="button">Copy code</button>
+        </div>
+      </div>
+
+      <div class="panel players-panel">
+        <div class="players-heading">
+          <div>
+            <h2>The players</h2>
+            <p id="player-count">0 players</p>
+          </div>
+          <span id="lobby-status" class="status-pill">Waiting</span>
+        </div>
+
+        <div id="players-list" class="players-list"></div>
+
+        <div class="lobby-footer">
+          <p id="lobby-hint">Waiting for your friends to join...</p>
+          <button id="start-game" class="primary" type="button" disabled>
+            Start game
+          </button>
+        </div>
+      </div>
+
+      <p id="lobby-message" class="message" role="status"></p>
+    </section>
+
+    <section id="game-screen" class="screen" hidden>
+      <div class="panel">
+        <span class="eyebrow">WITCH HUNT</span>
+        <h1>The game engine is next.</h1>
+        <p>Your room and player list are connected. We'll add secret roles,
+          missions, leader selection, task votes, scoring and the Oracle's
+          final guess in the next stage.</p>
+        <button id="return-lobby" class="secondary" type="button">
+          Return to lobby
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>WITCH HUNT</span>
+    <span>Choose your allies carefully.</span>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
