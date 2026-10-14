@@ -15,20 +15,32 @@ import {
   runTransaction
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-database.js";
 
-import { auth, db } from "./firebase.js";
+import {
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-storage.js";
 
-const $ = (id) => document.getElementById(id);
+import { auth, authReady, db, storage } from "./firebase.js";
 
-const avatars = ["🦇", "🕯️", "🔮", "🐈‍⬛", "🌙", "🕸️", "🦉", "🧙", "🗝️", "🍄", "🦋", "💀"];
+const $ = id => document.getElementById(id);
+
 const MAX_PLAYERS = 12;
 const MIN_PLAYERS = 5;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp"
+];
 
 let currentUser = null;
 let currentProfile = null;
 let currentRoomCode = null;
 let currentRoom = null;
-let selectedRegisterAvatar = avatars[0];
-let selectedProfileAvatar = avatars[0];
+let selectedRegisterFile = null;
+let selectedProfileFile = null;
 let stopRoomListener = null;
 let busy = false;
 
@@ -50,8 +62,16 @@ function setConnection(message) {
 
 function setBusy(value) {
   busy = value;
-  document.querySelectorAll("button[type='submit'], #create-room, #start-game")
-    .forEach(button => button.disabled = value);
+
+  document.querySelectorAll(
+    "#login-form button[type='submit'], " +
+    "#register-form button[type='submit'], " +
+    "#profile-form button[type='submit'], " +
+    "#join-form button[type='submit'], " +
+    "#create-room, #start-game"
+  ).forEach(button => {
+    button.disabled = value;
+  });
 }
 
 function cleanName(value) {
@@ -65,111 +85,296 @@ function normaliseCode(value) {
 function randomCode() {
   const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
   let code = "";
+
   for (let i = 0; i < 4; i++) {
     code += letters[Math.floor(Math.random() * letters.length)];
   }
+
   return code;
 }
 
-function makeAvatarPicker(containerId, selected, onSelect) {
+function validateImage(file) {
+  if (!file) {
+    throw new Error("Please choose a profile picture first.");
+  }
+
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    throw new Error("Choose a JPG, PNG, GIF or WebP image.");
+  }
+
+  if (file.size > MAX_IMAGE_SIZE) {
+    throw new Error("Your image must be 5 MB or smaller.");
+  }
+
+  return true;
+}
+
+function showPhotoPreview(containerId, fileOrUrl) {
   const container = $(containerId);
   container.replaceChildren();
 
-  avatars.forEach(avatar => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `avatar-choice ${avatar === selected ? "selected" : ""}`;
-    button.textContent = avatar;
-    button.setAttribute("aria-label", `Choose avatar ${avatar}`);
-    button.setAttribute("aria-pressed", String(avatar === selected));
+  if (!fileOrUrl) {
+    const placeholder = document.createElement("span");
+    placeholder.className = "photo-placeholder";
+    placeholder.textContent = "Choose a photo";
+    container.appendChild(placeholder);
+    return;
+  }
 
-    button.addEventListener("click", () => {
-      onSelect(avatar);
-      makeAvatarPicker(containerId, avatar, onSelect);
+  const image = document.createElement("img");
+  image.alt = "Profile picture preview";
+  image.className = "profile-photo";
+
+  if (fileOrUrl instanceof File) {
+    image.src = URL.createObjectURL(fileOrUrl);
+  } else {
+    image.src = fileOrUrl;
+  }
+
+  image.onerror = () => {
+    container.replaceChildren();
+    const placeholder = document.createElement("span");
+    placeholder.className = "photo-placeholder";
+    placeholder.textContent = "Image unavailable";
+    container.appendChild(placeholder);
+  };
+
+  container.appendChild(image);
+}
+
+function showAvatar(container, photoUrl) {
+  container.replaceChildren();
+
+  if (photoUrl && typeof photoUrl === "string") {
+    const image = document.createElement("img");
+    image.className = "profile-photo";
+    image.alt = "Player profile picture";
+    image.src = photoUrl;
+
+    image.onerror = () => {
+      container.replaceChildren();
+      const fallback = document.createElement("span");
+      fallback.className = "photo-placeholder";
+      fallback.textContent = "?";
+      container.appendChild(fallback);
+    };
+
+    container.appendChild(image);
+    return;
+  }
+
+  // Fallback for older profiles made before photo uploads were added.
+  const fallback = document.createElement("span");
+  fallback.className = "photo-placeholder";
+  fallback.textContent = "👤";
+  container.appendChild(fallback);
+}
+
+function wirePhotoInputs(fileInputId, cameraInputId, previewId, onSelect) {
+  const fileInput = $(fileInputId);
+  const cameraInput = $(cameraInputId);
+
+  function handleFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      validateImage(file);
+      onSelect(file);
+      showPhotoPreview(previewId, file);
+    } catch (error) {
+      event.target.value = "";
+      setMessage(
+        previewId === "register-avatar-preview" ? "auth-message" : "home-message",
+        error.message,
+        "error"
+      );
+    }
+  }
+
+  fileInput.addEventListener("change", handleFile);
+  cameraInput.addEventListener("change", handleFile);
+}
+
+wirePhotoInputs(
+  "register-avatar-file",
+  "register-camera-file",
+  "register-avatar-preview",
+  file => {
+    selectedRegisterFile = file;
+    $("register-camera-file").value = "";
+    $("register-avatar-file").value = "";
+  }
+);
+
+wirePhotoInputs(
+  "profile-avatar-file",
+  "profile-camera-file",
+  "profile-avatar-preview",
+  file => {
+    selectedProfileFile = file;
+    $("profile-camera-file").value = "";
+    $("profile-avatar-file").value = "";
+  }
+);
+
+// Keep the selected file in memory while allowing the same file to be picked again.
+function connectPhotoPicker(fileInputId, cameraInputId, previewId, onSelect) {
+  [fileInputId, cameraInputId].forEach(id => {
+    $(id).addEventListener("change", event => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      try {
+        validateImage(file);
+        onSelect(file);
+        showPhotoPreview(previewId, file);
+      } catch (error) {
+        setMessage(
+          previewId === "register-avatar-preview" ? "auth-message" : "home-message",
+          error.message,
+          "error"
+        );
+      }
+
+      event.target.value = "";
     });
-
-    container.appendChild(button);
   });
 }
 
-function renderAvatarPickers() {
-  makeAvatarPicker("register-avatars", selectedRegisterAvatar, avatar => {
-    selectedRegisterAvatar = avatar;
-  });
+// Remove the basic listeners above and use the picker handlers that preserve
+// the selected file and allow the same image to be selected again.
+$("register-avatar-file").replaceWith($("register-avatar-file").cloneNode(true));
+$("register-camera-file").replaceWith($("register-camera-file").cloneNode(true));
+$("profile-avatar-file").replaceWith($("profile-avatar-file").cloneNode(true));
+$("profile-camera-file").replaceWith($("profile-camera-file").cloneNode(true));
 
-  makeAvatarPicker("profile-avatars", selectedProfileAvatar, avatar => {
-    selectedProfileAvatar = avatar;
-  });
-}
+connectPhotoPicker(
+  "register-avatar-file",
+  "register-camera-file",
+  "register-avatar-preview",
+  file => { selectedRegisterFile = file; }
+);
 
-function validProfile(name, avatar) {
+connectPhotoPicker(
+  "profile-avatar-file",
+  "profile-camera-file",
+  "profile-avatar-preview",
+  file => { selectedProfileFile = file; }
+);
+
+function validProfile(name, profile) {
   return typeof name === "string" &&
     name.trim().length >= 1 &&
     name.trim().length <= 20 &&
-    avatars.includes(avatar);
+    profile &&
+    (typeof profile.avatarUrl === "string" ||
+      typeof profile.avatar === "string");
 }
 
-async function saveProfile(name, avatar) {
+async function uploadAvatar(file) {
+  validateImage(file);
+
+  const safeExtension = ({
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/gif": "gif",
+    "image/webp": "webp"
+  })[file.type];
+
+  const imageRef = storageRef(
+    storage,
+    `avatars/${currentUser.uid}/profile.${safeExtension}`
+  );
+
+  await uploadBytes(imageRef, file, {
+    contentType: file.type
+  });
+
+  return await getDownloadURL(imageRef);
+}
+
+async function updateRoomPlayerProfile(profile) {
+  if (!currentRoomCode || !currentUser) return;
+
+  await update(
+    ref(db, `rooms/${currentRoomCode}/players/${currentUser.uid}`),
+    {
+      displayName: profile.displayName,
+      avatarUrl: profile.avatarUrl || null
+    }
+  );
+}
+
+async function saveProfile(name, file = null) {
   const clean = cleanName(name);
 
-  if (!validProfile(clean, avatar)) {
-    throw new Error("Choose a name of 1–20 characters and a valid avatar.");
+  if (!clean || clean.length > 20) {
+    throw new Error("Your player name must be 1–20 characters.");
+  }
+
+  let avatarUrl = currentProfile?.avatarUrl || null;
+
+  if (file) {
+    avatarUrl = await uploadAvatar(file);
+  }
+
+  if (!avatarUrl) {
+    throw new Error("Please choose a profile picture.");
   }
 
   const profile = {
     displayName: clean,
-    avatar,
+    avatarUrl,
     updatedAt: Date.now()
   };
 
   await set(ref(db, `users/${currentUser.uid}`), profile);
   currentProfile = profile;
 
-  if (currentRoomCode) {
-    await set(ref(db, `rooms/${currentRoomCode}/players/${currentUser.uid}`), {
-      displayName: profile.displayName,
-      avatar: profile.avatar,
-      joinedAt: currentRoom?.players?.[currentUser.uid]?.joinedAt ?? Date.now()
-    });
-  }
-
+  await updateRoomPlayerProfile(profile);
   renderHomeProfile();
 }
 
 function renderHomeProfile() {
   if (!currentProfile) return;
 
-  $("home-name").textContent = currentProfile.displayName;
-  $("home-avatar").textContent = currentProfile.avatar;
-  $("profile-name").value = currentProfile.displayName;
-  selectedProfileAvatar = currentProfile.avatar;
-  makeAvatarPicker("profile-avatars", selectedProfileAvatar, avatar => {
-    selectedProfileAvatar = avatar;
-  });
+  $("home-name").textContent = currentProfile.displayName || "Player";
+  showAvatar($("home-avatar"), currentProfile.avatarUrl || null);
+  $("profile-name").value = currentProfile.displayName || "";
+
+  if (!selectedProfileFile) {
+    showPhotoPreview(
+      "profile-avatar-preview",
+      currentProfile.avatarUrl || null
+    );
+  }
 }
 
 async function loadProfile(user) {
   const snapshot = await get(ref(db, `users/${user.uid}`));
 
-  if (snapshot.exists()) {
-    currentProfile = snapshot.val();
-    if (!validProfile(currentProfile.displayName, currentProfile.avatar)) {
-      currentProfile = null;
-    }
-  } else {
+  if (!snapshot.exists()) {
     currentProfile = null;
-  }
-
-  if (!currentProfile) {
     showScreen("auth-screen");
     $("login-form").hidden = true;
-    $("register-form").hidden = true;
-    setMessage("auth-message", "Please create a profile before continuing.");
     $("register-form").hidden = false;
     $("show-login").hidden = true;
     $("show-register").hidden = true;
+    setMessage(
+      "auth-message",
+      "Your account has no saved profile yet. Choose a name and picture, then contact the site owner if you cannot finish setup."
+    );
     return;
   }
+
+  const profile = snapshot.val();
+
+  if (!validProfile(profile.displayName, profile)) {
+    throw new Error("Your saved profile is incomplete. Please contact the site owner.");
+  }
+
+  currentProfile = profile;
 
   $("login-form").hidden = false;
   $("register-form").hidden = true;
@@ -202,23 +407,44 @@ $("register-form").addEventListener("submit", async event => {
   const email = $("register-email").value.trim();
   const password = $("register-password").value;
 
-  if (!validProfile(name, selectedRegisterAvatar)) {
-    setMessage("auth-message", "Choose a player name and avatar.", "error");
+  if (!name) {
+    setMessage("auth-message", "Enter a player name.", "error");
+    return;
+  }
+
+  if (!selectedRegisterFile) {
+    setMessage("auth-message", "Please choose or take a profile picture.", "error");
+    return;
+  }
+
+  try {
+    validateImage(selectedRegisterFile);
+  } catch (error) {
+    setMessage("auth-message", error.message, "error");
     return;
   }
 
   setBusy(true);
+
   try {
+    await authReady;
+
     const credential = await createUserWithEmailAndPassword(auth, email, password);
     currentUser = credential.user;
 
+    const avatarUrl = await uploadAvatar(selectedRegisterFile);
+
     currentProfile = {
       displayName: name,
-      avatar: selectedRegisterAvatar,
+      avatarUrl,
       updatedAt: Date.now()
     };
 
     await set(ref(db, `users/${currentUser.uid}`), currentProfile);
+
+    selectedRegisterFile = null;
+    $("register-form").reset();
+    showAvatar($("home-avatar"), avatarUrl);
     renderHomeProfile();
     showScreen("home-screen");
     setMessage("home-message", "Your account is ready!", "success");
@@ -234,7 +460,9 @@ $("login-form").addEventListener("submit", async event => {
   if (busy) return;
 
   setBusy(true);
+
   try {
+    await authReady;
     await signInWithEmailAndPassword(
       auth,
       $("login-email").value.trim(),
@@ -255,6 +483,8 @@ function friendlyError(error) {
     "auth/weak-password": "Your password must be at least 6 characters.",
     "auth/too-many-requests": "Too many attempts. Please wait a while and try again.",
     "auth/network-request-failed": "Network error. Check your internet connection.",
+    "storage/unauthorized": "Firebase Storage denied the upload. Check your Storage rules.",
+    "storage/unknown": "The picture could not be uploaded. Check your Storage setup and try again.",
     "PERMISSION_DENIED": "Firebase denied access. Check your database security rules."
   };
 
@@ -274,6 +504,7 @@ async function createRoom() {
 
       const result = await runTransaction(roomRef, existing => {
         if (existing !== null) return;
+
         return {
           code,
           hostUid: currentUser.uid,
@@ -282,7 +513,7 @@ async function createRoom() {
           players: {
             [currentUser.uid]: {
               displayName: currentProfile.displayName,
-              avatar: currentProfile.avatar,
+              avatarUrl: currentProfile.avatarUrl || null,
               joinedAt: Date.now()
             }
           }
@@ -318,6 +549,7 @@ $("join-form").addEventListener("submit", async event => {
   }
 
   setBusy(true);
+
   try {
     const roomRef = ref(db, `rooms/${code}`);
     const snapshot = await get(roomRef);
@@ -340,8 +572,8 @@ $("join-form").addEventListener("submit", async event => {
 
     await set(ref(db, `rooms/${code}/players/${currentUser.uid}`), {
       displayName: currentProfile.displayName,
-      avatar: currentProfile.avatar,
-      joinedAt: Date.now()
+      avatarUrl: currentProfile.avatarUrl || null,
+      joinedAt: players[currentUser.uid]?.joinedAt ?? Date.now()
     });
 
     enterRoom(code);
@@ -410,6 +642,7 @@ function renderLobby() {
   $("display-room-code").textContent = currentRoomCode;
   $("player-count").textContent = `${count} / ${MAX_PLAYERS} players`;
   $("lobby-status").textContent = isHost ? "You are the host" : "Waiting";
+
   $("lobby-hint").textContent = isHost
     ? count < MIN_PLAYERS
       ? `You need at least ${MIN_PLAYERS} players to start. Invite your friends!`
@@ -427,7 +660,7 @@ function renderLobby() {
 
     const avatar = document.createElement("div");
     avatar.className = "player-avatar";
-    avatar.textContent = player.avatar || "🦇";
+    showAvatar(avatar, player.avatarUrl || null);
 
     const details = document.createElement("div");
     details.className = "player-details";
@@ -476,9 +709,8 @@ async function leaveRoom() {
       if (otherPlayers.length === 0) {
         await remove(ref(db, `rooms/${code}`));
       } else {
-        const nextHost = otherPlayers[0];
         await update(ref(db, `rooms/${code}`), {
-          hostUid: nextHost
+          hostUid: otherPlayers[0]
         });
         await remove(ref(db, `rooms/${code}/players/${uid}`));
       }
@@ -493,6 +725,7 @@ async function leaveRoom() {
   }
 
   if (stopRoomListener) stopRoomListener();
+
   stopRoomListener = null;
   currentRoomCode = null;
   currentRoom = null;
@@ -502,11 +735,15 @@ async function leaveRoom() {
 $("leave-room").addEventListener("click", leaveRoom);
 
 $("edit-profile").addEventListener("click", () => {
+  selectedProfileFile = null;
   $("profile-editor").hidden = false;
   renderHomeProfile();
 });
 
 $("cancel-profile").addEventListener("click", () => {
+  selectedProfileFile = null;
+  $("profile-avatar-file").value = "";
+  $("profile-camera-file").value = "";
   $("profile-editor").hidden = true;
 });
 
@@ -515,8 +752,12 @@ $("profile-form").addEventListener("submit", async event => {
   if (busy) return;
 
   setBusy(true);
+
   try {
-    await saveProfile($("profile-name").value, selectedProfileAvatar);
+    await saveProfile($("profile-name").value, selectedProfileFile);
+    selectedProfileFile = null;
+    $("profile-avatar-file").value = "";
+    $("profile-camera-file").value = "";
     $("profile-editor").hidden = true;
     setMessage("home-message", "Profile updated!", "success");
   } catch (error) {
@@ -534,8 +775,10 @@ $("logout").addEventListener("click", async () => {
 $("start-game").addEventListener("click", async () => {
   if (!currentRoom || currentRoom.hostUid !== currentUser?.uid) return;
 
-  setMessage("lobby-message",
-    "The lobby is ready! The gameplay engine will be added in the next stage.");
+  setMessage(
+    "lobby-message",
+    "The lobby is ready! The gameplay engine will be added in the next stage."
+  );
 });
 
 $("return-lobby").addEventListener("click", () => {
@@ -548,10 +791,12 @@ onAuthStateChanged(auth, async user => {
 
   if (!user) {
     if (stopRoomListener) stopRoomListener();
+
     stopRoomListener = null;
     currentProfile = null;
     currentRoomCode = null;
     currentRoom = null;
+
     showScreen("auth-screen");
     switchAuthTab(false);
     setConnection("Signed out");
@@ -561,6 +806,7 @@ onAuthStateChanged(auth, async user => {
   setConnection("Loading profile...");
 
   try {
+    await authReady;
     await loadProfile(user);
   } catch (error) {
     showScreen("auth-screen");
@@ -568,5 +814,3 @@ onAuthStateChanged(auth, async user => {
     setConnection("Connection error");
   }
 });
-
-renderAvatarPickers();
